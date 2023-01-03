@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "AutomapGenerator.Benchmarks": {
+      "commandName": "Project",
+      "commandLineArgs": "-f * --join"
+    }
+  }
+}
