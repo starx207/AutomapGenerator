@@ -7,6 +7,7 @@ namespace AutomapGenerator.SourceGenerator.Internal;
 
 internal static class MapGenHelper {
     private const string MAP_METHOD_NAME = "Map";
+    private const string PROJECTTO_METHOD_NAME = "ProjectTo";
     private const string GENERIC_TYPE_NAME_DESTINATION = "TDestination";
     private const string MAPPER_INTERFACE = "IMapper";
     private static readonly string _generatorVersion = typeof(MapperGenerator).Assembly.GetName().Version.ToString();
@@ -22,14 +23,16 @@ internal static class MapGenHelper {
                             Token(SyntaxKind.PublicKeyword)))
                     .WithMembers(List(new MemberDeclarationSyntax[] {
                         CreateMapNewSignature("source").WithSemicolonToken(Token(SyntaxKind.SemicolonToken)),
-                        CreateMapExistingSignature("source", "destination").WithSemicolonToken(Token(SyntaxKind.SemicolonToken))
+                        CreateMapExistingSignature("source", "destination").WithSemicolonToken(Token(SyntaxKind.SemicolonToken)),
+                        CreateProjectToSignature("source").WithSemicolonToken(Token(SyntaxKind.SemicolonToken))
                     }))))
             .NormalizeWhitespace();
 
     public static NamespaceDeclarationSyntax CreateMapperClass(MapDefinition[] sources) {
         var mapperMethods = new List<MemberDeclarationSyntax> {
             CreateMapNewMethod(),
-            CreateMapExistingMethod(sources)
+            CreateMapExistingMethod(sources),
+            CreateProjectToMethod(sources)
         };
 
         return CreateCoreNamespace()
@@ -87,6 +90,37 @@ internal static class MapGenHelper {
                     Parameter(Identifier(destinationParamName)).WithType(IdentifierName(GENERIC_TYPE_NAME_DESTINATION))
                 })));
 
+    private static MethodDeclarationSyntax CreateProjectToSignature(string sourceParamName)
+        => MethodDeclaration(
+                AliasQualifiedName(
+                    IdentifierName(Token(SyntaxKind.GlobalKeyword)),
+                    GenericName(Identifier(typeof(IQueryable).FullName))
+                    .WithTypeArgumentList(TypeArgumentList(
+                        SingletonSeparatedList<TypeSyntax>(IdentifierName(GENERIC_TYPE_NAME_DESTINATION))
+                    ))
+                ),
+                Identifier(PROJECTTO_METHOD_NAME))
+        .WithTypeParameterList(TypeParameterList(
+            SingletonSeparatedList(
+                TypeParameter(Identifier(GENERIC_TYPE_NAME_DESTINATION))
+            )))
+        .WithParameterList(ParameterList(
+            SingletonSeparatedList(
+                Parameter(Identifier(sourceParamName))
+                .WithType(
+                    AliasQualifiedName(
+                        IdentifierName(Token(SyntaxKind.GlobalKeyword)),
+                        GenericName(Identifier(typeof(IQueryable).FullName))
+                        .WithTypeArgumentList(TypeArgumentList(
+                            SingletonSeparatedList<TypeSyntax>(PredefinedType(Token(SyntaxKind.ObjectKeyword)))
+                        ))
+                    ))
+            )))
+        .WithConstraintClauses(SingletonList(
+            TypeParameterConstraintClause(IdentifierName(GENERIC_TYPE_NAME_DESTINATION))
+            .WithConstraints(SingletonSeparatedList<TypeParameterConstraintSyntax>(ConstructorConstraint()))
+        ));
+
     private static NamespaceDeclarationSyntax CreateCoreNamespace()
         => NamespaceDeclaration(
             //IdentifierName(typeof(MappingException).Namespace)) // TODO: This currently does not work in consuming project. Need to investigate why
@@ -131,62 +165,11 @@ internal static class MapGenHelper {
         var switchSections = new List<SwitchSectionSyntax>();
         for (var i = 0; i < srcMappings.Length; i++) {
             var mapping = srcMappings[i];
-            switchSections.Add(CreateSwitchSection(mapping));
+            switchSections.Add(CreateMapMethodSwitchSection(mapping));
         }
 
         // Add the default switch section 
-        switchSections.Add(
-            SwitchSection()
-            .WithLabels(SingletonList<SwitchLabelSyntax>(DefaultSwitchLabel()))
-            .WithStatements(SingletonList<StatementSyntax>(
-                ThrowStatement(
-                    ObjectCreationExpression(
-                        //IdentifierName(nameof(MappingException))) // TODO: This currently does not work in consuming project. Need to investigate why
-                        IdentifierName("MappingException"))
-                    .WithArgumentList(
-                        ArgumentList(
-                            SingletonSeparatedList(
-                                Argument(
-                                    InterpolatedStringExpression(
-                                          Token(SyntaxKind.InterpolatedStringStartToken))
-                                    .WithContents(List(new InterpolatedStringContentSyntax[] {
-                                        InterpolatedStringText()
-                                        .WithTextToken(Token(
-                                            TriviaList(),
-                                            SyntaxKind.InterpolatedStringTextToken,
-                                            "Mapping from ",
-                                            "Mapping from ",
-                                            TriviaList())),
-                                        Interpolation(MemberAccessExpression(
-                                            SyntaxKind.SimpleMemberAccessExpression,
-                                            InvocationExpression(
-                                                MemberAccessExpression(
-                                                    SyntaxKind.SimpleMemberAccessExpression,
-                                                    IdentifierName(sourceVarName),
-                                                    IdentifierName("GetType"))),
-                                            IdentifierName("Name"))),
-                                        InterpolatedStringText()
-                                        .WithTextToken(Token(
-                                            TriviaList(),
-                                            SyntaxKind.InterpolatedStringTextToken,
-                                            " to ",
-                                            " to ",
-                                            TriviaList())),
-                                        Interpolation(
-                                            MemberAccessExpression(
-                                                SyntaxKind.SimpleMemberAccessExpression,
-                                                TypeOfExpression(
-                                                    IdentifierName(GENERIC_TYPE_NAME_DESTINATION)),
-                                                IdentifierName("Name"))),
-                                        InterpolatedStringText()
-                                        .WithTextToken(Token(
-                                            TriviaList(),
-                                            SyntaxKind.InterpolatedStringTextToken,
-                                            " has not been configured.",
-                                            " has not been configured.",
-                                            TriviaList()))
-                                    })))))))))
-        );
+        switchSections.Add(CreateDefaultSwitchThrow(sourceVarName));
 
         return CreateMapExistingSignature(sourceVarName, destinationVarName)
             .WithModifiers(
@@ -206,7 +189,54 @@ internal static class MapGenHelper {
                 ));
     }
 
-    private static SwitchSectionSyntax CreateSwitchSection(MapDefinition mapping) {
+    private static MemberDeclarationSyntax CreateProjectToMethod(MapDefinition[] srcMappings) {
+        var destinationVarName = "destInstance";
+        var sourceVarName = "source";
+
+        var switchSections = new List<SwitchSectionSyntax>();
+        for (var i = 0; i < srcMappings.Length; i++) {
+            var mapping = srcMappings[i];
+            switchSections.Add(CreateProjectToMethodSwitchSection(mapping));
+        }
+
+        // Add the default switch section
+        switchSections.Add(CreateDefaultSwitchThrow(sourceVarName));
+
+        return CreateProjectToSignature(sourceVarName)
+            .WithModifiers(
+                TokenList(
+                    Token(SyntaxKind.PublicKeyword)))
+            .WithBody(
+                Block(
+                    LocalDeclarationStatement(
+                        VariableDeclaration(
+                            IdentifierName(
+                                Identifier(
+                                    TriviaList(),
+                                    SyntaxKind.VarKeyword,
+                                    "var",
+                                    "var",
+                                    TriviaList())))
+                        .WithVariables(
+                            SingletonSeparatedList(
+                                VariableDeclarator(Identifier(destinationVarName))
+                                .WithInitializer(
+                                    EqualsValueClause(
+                                        ObjectCreationExpression(IdentifierName(GENERIC_TYPE_NAME_DESTINATION))
+                                        .WithArgumentList(ArgumentList())))))),
+
+                    SwitchStatement(
+                        TupleExpression(
+                            SeparatedList<ArgumentSyntax>(new SyntaxNodeOrToken[] {
+                                Argument(IdentifierName(sourceVarName)),
+                                Token(SyntaxKind.CommaToken),
+                                Argument(IdentifierName(destinationVarName))
+                            })))
+                    .WithSections(List(switchSections))
+                ));
+    }
+
+    private static SwitchSectionSyntax CreateMapMethodSwitchSection(MapDefinition mapping) {
         var patternMatchSrcName = ParseTypeName(mapping.SourceName);
         var patternMatchDestName = ParseTypeName(mapping.DestinationName);
         var matchedSrcVarName = "s";
@@ -252,6 +282,155 @@ internal static class MapGenHelper {
                         Token(SyntaxKind.ColonToken))))
             .WithStatements(List(expressions));
     }
+
+    private static SwitchSectionSyntax CreateProjectToMethodSwitchSection(MapDefinition mapping) {
+        var patternMatchSrcName = ParseTypeName(mapping.SourceName);
+        var patternMatchDestName = ParseTypeName(mapping.DestinationName);
+        var matchedSrcVarName = "s";
+        var lambdaVarName = "src";
+
+        var expressions = new List<SyntaxNodeOrToken>();
+        for (var i = 0; i < mapping.WritableDestinationProperties.Length; i++) {
+            var destProp = mapping.WritableDestinationProperties[i];
+            var sourceProp = mapping.SourceProperties.Single(p => p.Name == destProp.Name);
+            
+            expressions.Add(
+                AssignmentExpression(
+                    SyntaxKind.SimpleAssignmentExpression,
+                    IdentifierName(destProp.Name),
+                    MemberAccessExpression(
+                        SyntaxKind.SimpleMemberAccessExpression,
+                        IdentifierName(lambdaVarName),
+                        IdentifierName(sourceProp.Name))));
+
+            // Add a comma after all but the last expression
+            if (i < mapping.WritableDestinationProperties.Length - 1) {
+                expressions.Add(Token(SyntaxKind.CommaToken));
+            }
+        }
+
+        return SwitchSection()
+            .WithLabels(
+                SingletonList<SwitchLabelSyntax>(
+                    CasePatternSwitchLabel(
+                        RecursivePattern()
+                        .WithPositionalPatternClause(
+                            PositionalPatternClause(
+                                SeparatedList<SubpatternSyntax>(new SyntaxNodeOrToken[] {
+                                    Subpattern(
+                                        DeclarationPattern(
+                                            AliasQualifiedName(
+                                                IdentifierName(Token(SyntaxKind.GlobalKeyword)),
+                                                GenericName(Identifier(typeof(IQueryable).FullName))
+                                                .WithTypeArgumentList(
+                                                    TypeArgumentList(SingletonSeparatedList(patternMatchSrcName)))
+                                            ),
+                                            SingleVariableDesignation(Identifier(matchedSrcVarName))
+                                        )),
+                                    Token(SyntaxKind.CommaToken),
+                                    Subpattern(
+                                        ConstantPattern(ParseExpression(mapping.DestinationName)))
+                                }))),
+                        Token(SyntaxKind.ColonToken))))
+            .WithStatements(
+                SingletonList<StatementSyntax>(
+                    ReturnStatement(
+                        InvocationExpression(
+                            MemberAccessExpression(
+                                SyntaxKind.SimpleMemberAccessExpression,
+                                MemberAccessExpression(
+                                    SyntaxKind.SimpleMemberAccessExpression,
+                                    AliasQualifiedName(
+                                        IdentifierName(Token(SyntaxKind.GlobalKeyword)),
+                                        IdentifierName(typeof(Queryable).Namespace)
+                                    ),
+                                    IdentifierName(nameof(Queryable))),
+                                GenericName(Identifier(nameof(Queryable.Cast)))
+                                .WithTypeArgumentList(
+                                    TypeArgumentList(
+                                        SingletonSeparatedList<TypeSyntax>(IdentifierName(GENERIC_TYPE_NAME_DESTINATION))))))
+                        .WithArgumentList(
+                            ArgumentList(
+                                SingletonSeparatedList(
+                                    Argument(
+                                        InvocationExpression(
+                                            MemberAccessExpression(
+                                                SyntaxKind.SimpleMemberAccessExpression,
+                                                MemberAccessExpression(
+                                                    SyntaxKind.SimpleMemberAccessExpression,
+                                                    AliasQualifiedName(
+                                                        IdentifierName(Token(SyntaxKind.GlobalKeyword)),
+                                                        IdentifierName(typeof(Queryable).Namespace)),
+                                                    IdentifierName(nameof(Queryable))),
+                                                IdentifierName(nameof(Queryable.Select))))
+                                        .WithArgumentList(
+                                            ArgumentList(
+                                                SeparatedList<ArgumentSyntax>(new SyntaxNodeOrToken[] {
+                                                    Argument(IdentifierName(matchedSrcVarName)),
+                                                    Token(SyntaxKind.CommaToken),
+                                                    Argument(SimpleLambdaExpression(
+                                                        Parameter(Identifier(lambdaVarName)))
+                                                    .WithExpressionBody(
+                                                        ObjectCreationExpression(patternMatchDestName)
+                                                        .WithArgumentList(ArgumentList())
+                                                        .WithInitializer(
+                                                            InitializerExpression(
+                                                                SyntaxKind.ObjectInitializerExpression,
+                                                                SeparatedList<ExpressionSyntax>(expressions)))))
+                                                }))))))))));
+    }
+
+    private static SwitchSectionSyntax CreateDefaultSwitchThrow(string sourceVarName)
+        => SwitchSection()
+        .WithLabels(SingletonList<SwitchLabelSyntax>(DefaultSwitchLabel()))
+        .WithStatements(SingletonList<StatementSyntax>(
+            ThrowStatement(
+                ObjectCreationExpression(
+                    //IdentifierName(nameof(MappingException))) // TODO: This currently does not work in consuming project. Need to investigate why
+                    IdentifierName("MappingException"))
+                .WithArgumentList(
+                    ArgumentList(
+                        SingletonSeparatedList(
+                            Argument(
+                                InterpolatedStringExpression(
+                                        Token(SyntaxKind.InterpolatedStringStartToken))
+                                .WithContents(List(new InterpolatedStringContentSyntax[] {
+                                InterpolatedStringText()
+                                .WithTextToken(Token(
+                                    TriviaList(),
+                                    SyntaxKind.InterpolatedStringTextToken,
+                                    "Mapping from ",
+                                    "Mapping from ",
+                                    TriviaList())),
+                                Interpolation(MemberAccessExpression(
+                                    SyntaxKind.SimpleMemberAccessExpression,
+                                    InvocationExpression(
+                                        MemberAccessExpression(
+                                            SyntaxKind.SimpleMemberAccessExpression,
+                                            IdentifierName(sourceVarName),
+                                            IdentifierName("GetType"))),
+                                    IdentifierName("Name"))),
+                                InterpolatedStringText()
+                                .WithTextToken(Token(
+                                    TriviaList(),
+                                    SyntaxKind.InterpolatedStringTextToken,
+                                    " to ",
+                                    " to ",
+                                    TriviaList())),
+                                Interpolation(
+                                    MemberAccessExpression(
+                                        SyntaxKind.SimpleMemberAccessExpression,
+                                        TypeOfExpression(
+                                            IdentifierName(GENERIC_TYPE_NAME_DESTINATION)),
+                                        IdentifierName("Name"))),
+                                InterpolatedStringText()
+                                .WithTextToken(Token(
+                                    TriviaList(),
+                                    SyntaxKind.InterpolatedStringTextToken,
+                                    " has not been configured.",
+                                    " has not been configured.",
+                                    TriviaList()))
+                                })))))))));
 
     private static TypeDeclarationSyntax WithAutoGeneratedCodeAttributes(this TypeDeclarationSyntax interfaceDeclaration, bool withCodeCoverageExclusion = false) {
         var attributes = new List<AttributeListSyntax> {

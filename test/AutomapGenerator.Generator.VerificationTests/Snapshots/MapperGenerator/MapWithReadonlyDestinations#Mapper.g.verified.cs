@@ -23,5 +23,19 @@ namespace AutomapGenerator
 
             return destination;
         }
+
+        public global::System.Linq.IQueryable<TDestination> ProjectTo<TDestination>(global::System.Linq.IQueryable<object> source)
+            where TDestination : new()
+        {
+            var destInstance = new TDestination();
+            switch (source, destInstance)
+            {
+                case (global::System.Linq.IQueryable<SampleMappingConsumer.Models.SourceObj> s, SampleMappingConsumer.Models.DestinationObj):
+                    return global::System.Linq.Queryable.Cast<TDestination>(global::System.Linq.Queryable.Select(s, src => new SampleMappingConsumer.Models.DestinationObj()
+                    {Id = src.Id, Timestamp = src.Timestamp, InUse = src.InUse}));
+                default:
+                    throw new MappingException($"Mapping from {source.GetType().Name} to {typeof(TDestination).Name} has not been configured.");
+            }
+        }
     }
 }

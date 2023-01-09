@@ -21,6 +21,8 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AutomapGenerator.SourceGene
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AutomapGenerator.Benchmarks", "test\AutomapGenerator.Benchmarks\AutomapGenerator.Benchmarks.csproj", "{586BFCE3-4C3D-4B9C-996E-BC49DD508504}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SampleEFCoreMappingConsumer", "samples\SampleEFCoreMappingConsumer\SampleEFCoreMappingConsumer.csproj", "{789ECF27-967E-4E85-AAA4-CD83063BC628}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -47,12 +49,17 @@ Global
 		{586BFCE3-4C3D-4B9C-996E-BC49DD508504}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{586BFCE3-4C3D-4B9C-996E-BC49DD508504}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{586BFCE3-4C3D-4B9C-996E-BC49DD508504}.Release|Any CPU.Build.0 = Release|Any CPU
+		{789ECF27-967E-4E85-AAA4-CD83063BC628}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{789ECF27-967E-4E85-AAA4-CD83063BC628}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{789ECF27-967E-4E85-AAA4-CD83063BC628}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{789ECF27-967E-4E85-AAA4-CD83063BC628}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
 		{3BA37435-A574-4367-B18B-C888D66D0E0A} = {572A2507-1A1C-44A6-92A9-5C9C3504C861}
+		{789ECF27-967E-4E85-AAA4-CD83063BC628} = {572A2507-1A1C-44A6-92A9-5C9C3504C861}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {4D78A9F1-08DE-4F05-ACA5-4A2F2675564B}

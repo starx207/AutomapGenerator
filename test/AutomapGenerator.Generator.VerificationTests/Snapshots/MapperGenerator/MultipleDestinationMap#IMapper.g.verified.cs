@@ -8,5 +8,7 @@ namespace AutomapGenerator
         TDestination Map<TDestination>(object source)
             where TDestination : new();
         TDestination Map<TDestination>(object source, TDestination destination);
+        global::System.Linq.IQueryable<TDestination> ProjectTo<TDestination>(global::System.Linq.IQueryable<object> source)
+            where TDestination : new();
     }
 }
