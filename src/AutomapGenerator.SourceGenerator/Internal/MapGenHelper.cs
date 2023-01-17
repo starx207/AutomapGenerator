@@ -165,7 +165,9 @@ internal static class MapGenHelper {
         var switchSections = new List<SwitchSectionSyntax>();
         for (var i = 0; i < srcMappings.Length; i++) {
             var mapping = srcMappings[i];
-            switchSections.Add(CreateMapMethodSwitchSection(mapping));
+            if (!mapping.ProjectionOnly) {
+                switchSections.Add(CreateMapMethodSwitchSection(mapping));
+            }
         }
 
         // Add the default switch section 

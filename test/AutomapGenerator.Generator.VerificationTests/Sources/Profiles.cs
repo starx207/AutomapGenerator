@@ -1,6 +1,7 @@
 ﻿namespace AutomapGenerator.Generator.VerificationTests.Sources;
 internal static class Profiles {
     public static string BASIC_CREATE_MAP = MapperWithMappings("BasicMapProfile", $"CreateMap<{SourceObj.NAME}, {DestinationObj.NAME}>();");
+    public static string BASIC_CREATE_PROJECTION = MapperWithMappings("BasicMapProfile", $"CreateProjection<{SourceObj.NAME}, {DestinationObj.NAME}>();");
     public static string EMPTY_CONSTRUCTOR = MapperWithMappings("EmptyMapProfile");
     public const string NO_CONSTRUCTOR = @"
 using AutomapGenerator;

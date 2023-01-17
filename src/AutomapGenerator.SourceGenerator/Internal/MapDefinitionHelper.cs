@@ -18,8 +18,11 @@ internal static class MapDefinitionHelper {
         }
 
         var methodName = symbol.ToDisplayString();
+        var projectionOnly = true;
         // TODO: If I add the reference, how could I make this better?
-        if (!methodName.StartsWith("AutomapGenerator.MapProfile.CreateMap<")) {
+        if (methodName.StartsWith("AutomapGenerator.MapProfile.CreateMap<")) {
+            projectionOnly = false;
+        } else if (!methodName.StartsWith("AutomapGenerator.MapProfile.CreateProjection<")) {
             return null;
         }
 
@@ -54,7 +57,8 @@ internal static class MapDefinitionHelper {
         return new(sourceSymbol.ToDisplayString(),
             ImmutableArray.CreateRange(sourceProperties),
             destinationSymbol.ToDisplayString(),
-            ImmutableArray.CreateRange(destProperties));
+            ImmutableArray.CreateRange(destProperties),
+            projectionOnly);
     }
 
     public static IEnumerable<MapDefinition> ConvertToMapDefinitions(Compilation compilation, ImmutableArray<InvocationExpressionSyntax> invocations, CancellationToken token) {
