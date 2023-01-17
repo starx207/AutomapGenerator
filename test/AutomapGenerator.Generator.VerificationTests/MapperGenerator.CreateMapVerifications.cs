@@ -58,5 +58,12 @@ public class MapperGenerator_CreateMapVerifications {
         Profiles.BASIC_CREATE_MAP
     }, SNAPSHOT_LOCATION);
 
+    [Fact]
+    public Task MapWithSourceObjectPrefixes() => Verifier.Verify(new[] {
+        SourceObj.FULL_OBJ,
+        DestinationObj.FULL_OBJ_WITH_SRC_PREFIX,
+        Profiles.BASIC_CREATE_MAP
+    }, SNAPSHOT_LOCATION);
+
     #endregion
 }

@@ -245,9 +245,9 @@ internal static class MapGenHelper {
         var matchedDestVarName = "d";
 
         var expressions = new List<StatementSyntax>();
-        for (var i = 0; i < mapping.WritableDestinationProperties.Length; i++) {
-            var destProp = mapping.WritableDestinationProperties[i];
-            var sourceProp = mapping.SourceProperties.Single(p => p.Name == destProp.Name);
+        var destMappings = mapping.GetDestinationMappings();
+        for (var i = 0; i < destMappings.Count; i++) {
+            (var destProp, var srcProp) = destMappings[i];
 
             expressions.Add(ExpressionStatement(
                 AssignmentExpression(
@@ -255,11 +255,11 @@ internal static class MapGenHelper {
                     MemberAccessExpression(
                         SyntaxKind.SimpleMemberAccessExpression,
                         IdentifierName(matchedDestVarName),
-                        IdentifierName(destProp.Name)),
+                        IdentifierName(destProp)),
                     MemberAccessExpression(
                         SyntaxKind.SimpleMemberAccessExpression,
                         IdentifierName(matchedSrcVarName),
-                        IdentifierName(sourceProp.Name)))));
+                        IdentifierName(srcProp)))));
         }
         expressions.Add(BreakStatement());
 
@@ -292,23 +292,23 @@ internal static class MapGenHelper {
         var lambdaVarName = "src";
 
         var expressions = new List<SyntaxNodeOrToken>();
-        for (var i = 0; i < mapping.WritableDestinationProperties.Length; i++) {
-            var destProp = mapping.WritableDestinationProperties[i];
-            var sourceProp = mapping.SourceProperties.Single(p => p.Name == destProp.Name);
-            
+        var destMappings = mapping.GetDestinationMappings();
+        for (var i = 0; i < destMappings.Count; i++) {
+            (var destProp, var srcProp) = destMappings[i];
+
+            // Add a comma after the last expression before adding another
+            if (expressions.Count > 0) {
+                expressions.Add(Token(SyntaxKind.CommaToken));
+            }
+
             expressions.Add(
                 AssignmentExpression(
                     SyntaxKind.SimpleAssignmentExpression,
-                    IdentifierName(destProp.Name),
+                    IdentifierName(destProp),
                     MemberAccessExpression(
                         SyntaxKind.SimpleMemberAccessExpression,
                         IdentifierName(lambdaVarName),
-                        IdentifierName(sourceProp.Name))));
-
-            // Add a comma after all but the last expression
-            if (i < mapping.WritableDestinationProperties.Length - 1) {
-                expressions.Add(Token(SyntaxKind.CommaToken));
-            }
+                        IdentifierName(srcProp))));
         }
 
         return SwitchSection()

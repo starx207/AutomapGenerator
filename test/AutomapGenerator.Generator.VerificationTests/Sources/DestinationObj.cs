@@ -12,6 +12,16 @@ public class {NAME} {{
     public bool InUse {{ get; set; }}
 }}";
 
+    public const string FULL_OBJ_WITH_SRC_PREFIX = $@"
+namespace SampleMappingConsumer.Models;
+
+public class {NAME} {{
+    public Guid {SourceObj.NAME}Id {{ get; set; }}
+    public string? {SourceObj.NAME}Type {{ get; set; }}
+    public DateTime? Timestamp {{ get; set; }}
+    public bool InUse {{ get; set; }}
+}}";
+
     public const string FULL_OBJ_WITH_READONLY_PROP = $@"
 namespace SampleMappingConsumer.Models;
 
