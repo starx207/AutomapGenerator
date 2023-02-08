@@ -9,4 +9,7 @@ public static class MapProfileRunner {
 
     public static SimpleDestination RunSimpleMap(SimpleSource source, Mapper mapper)
         => mapper.Map<SimpleDestination>(source);
+
+    public static FlattenedDest RunFlatteningMap(SrcWithNested source, Mapper mapper)
+        => mapper.Map<FlattenedDest>(source);
 }
