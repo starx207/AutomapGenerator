@@ -65,5 +65,13 @@ public class MapperGenerator_CreateMapVerifications {
         Profiles.BASIC_CREATE_MAP
     }, SNAPSHOT_LOCATION);
 
+    [Fact]
+    public Task MapWithSourceObjectFlattening() => Verifier.Verify(new[] {
+        NestedSrcObj.FULL_OBJ,
+        SourceObj.SIMPLE_OBJ_WITH_NESTING,
+        DestinationObj.SIMPLE_OBJ_FROM_NESTED,
+        Profiles.BASIC_CREATE_MAP
+    }, SNAPSHOT_LOCATION);
+
     #endregion
 }

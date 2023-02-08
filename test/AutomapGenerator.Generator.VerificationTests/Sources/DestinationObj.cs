@@ -40,5 +40,16 @@ public class {NAME} {{
     public string? Type {{ get; set; }}
 }}";
 
+    public const string SIMPLE_OBJ_FROM_NESTED = $@"
+namespace SampleMappingConsumer.Models;
+
+public class {NAME} {{
+    public Guid Id {{ get; set; }}
+    public string? ChildObjDescription {{ get; set; }}
+    public string? ChildObjOtherProp {{ get; set; }}
+}}";
+
     public static string SimpleObjWithName(string name) => SIMPLE_OBJ.Replace(NAME, name);
+
+    public static string NestedObjWithChildName(string childDescName) => SIMPLE_OBJ_FROM_NESTED.Replace("ChildDescription", childDescName);
 }

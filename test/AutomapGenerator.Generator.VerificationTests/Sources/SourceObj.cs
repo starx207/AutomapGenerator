@@ -33,5 +33,13 @@ public class {NAME} {{
 }}
 ";
 
+    public const string SIMPLE_OBJ_WITH_NESTING = $@"
+namespace SampleMappingConsumer.Models;
+
+public class {NAME} {{
+    public Guid Id {{ get; set; }}
+    public {NestedSrcObj.NAME} ChildObj {{ get; set; }}
+}}";
+
     public static string SimpleObjWithName(string name) => SIMPLE_OBJ.Replace(NAME, name);
 }
