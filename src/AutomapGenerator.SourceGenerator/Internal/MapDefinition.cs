@@ -66,16 +66,20 @@ internal record MapDefinition(string SourceName, ImmutableArray<IPropertySymbol>
     }
 
     private static bool TryMatchProperty(IPropertySymbol property, string[] path, out int matchedLength) {
-        if (property.Name == path[0]) {
-            matchedLength = 1;
+        // See if the property name matches the path
+        var propNameParts = SplitNameByConvention(property.Name);
+        if (propNameParts.SequenceEqual(path.Take(propNameParts.Length))) {
+            matchedLength = propNameParts.Length;
             return true;
         }
 
-        for (var i = 1; i < path.Length; i++) {
-            if (property.Name == string.Join("", path.Take(i + 1))) {
-                matchedLength = i + 1;
-                return true;
-            }
+        // If the path starts with the containing type name, skip it and re-check for a match
+        var propTypeParts = SplitNameByConvention(property.ContainingType.Name);
+        if (propTypeParts.SequenceEqual(path.Take(propTypeParts.Length)) 
+            && propNameParts.SequenceEqual(path.Skip(propTypeParts.Length).Take(propNameParts.Length))) {
+
+            matchedLength = propTypeParts.Length + propNameParts.Length;
+            return true;
         }
 
         matchedLength = 0;

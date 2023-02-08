@@ -16,6 +16,9 @@ namespace AutomapGenerator
                     d.Id = s.Id;
                     d.ChildObjDescription = s.ChildObj.Description;
                     d.ChildObjOtherProp = s.ChildObj.OtherProp;
+                    d.SourceObjChildObjDescription = s.ChildObj.Description;
+                    d.ChildObjNestedSrcObjOtherProp = s.ChildObj.OtherProp;
+                    d.NestedSrcObjDescription = s.NestedSrcObj.Description;
                     break;
                 default:
                     throw new MappingException($"Mapping from {source.GetType().Name} to {typeof(TDestination).Name} has not been configured.");
@@ -32,7 +35,7 @@ namespace AutomapGenerator
             {
                 case (global::System.Linq.IQueryable<SampleMappingConsumer.Models.SourceObj> s, SampleMappingConsumer.Models.DestinationObj):
                     return global::System.Linq.Queryable.Cast<TDestination>(global::System.Linq.Queryable.Select(s, src => new SampleMappingConsumer.Models.DestinationObj()
-                    {Id = src.Id, ChildObjDescription = src.ChildObj.Description, ChildObjOtherProp = src.ChildObj.OtherProp}));
+                    {Id = src.Id, ChildObjDescription = src.ChildObj.Description, ChildObjOtherProp = src.ChildObj.OtherProp, SourceObjChildObjDescription = src.ChildObj.Description, ChildObjNestedSrcObjOtherProp = src.ChildObj.OtherProp, NestedSrcObjDescription = src.NestedSrcObj.Description}));
                 default:
                     throw new MappingException($"Mapping from {source.GetType().Name} to {typeof(TDestination).Name} has not been configured.");
             }
