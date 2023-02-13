@@ -20,6 +20,14 @@ public class BasicMapProfile : MapProfile {{
     public BasicMapProfile() => CreateMap<{SourceObj.NAME}, {DestinationObj.NAME}>();
 }}";
 
+    public static string CREATE_MAP_WITH_IGNORE = MapperWithMappings("IgnoreMemberProfile", $"CreateMap<{SourceObj.NAME}, {DestinationObj.NAME}>().ForMember(d => d.Type, opt => opt.Ignore());");
+
+    public static string CREATE_MAP_WITH_MULTIPLE_IGNORES = MapperWithMappings("IgnoreMemberProfile", 
+        @$"
+CreateMap<{SourceObj.NAME}, {DestinationObj.NAME}>()
+    .ForMember(d => d.Type, opt => opt.Ignore())
+    .ForMember(d => d.InUse, opt => opt.Ignore());");
+
     public static string MultipleSourcesToDestination(params string[] sources)
         => MapperWithMappings("BasicMapProfile", sources.Select(s => $"CreateMap<{s}, {DestinationObj.NAME}>();"));
 

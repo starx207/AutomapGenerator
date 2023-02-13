@@ -4,13 +4,17 @@ using Microsoft.CodeAnalysis;
 namespace AutomapGenerator.SourceGenerator.Internal;
 
 internal record MapDefinition(string SourceName, ImmutableArray<IPropertySymbol> SourceProperties,
-    string DestinationName, ImmutableArray<IPropertySymbol> WritableDestinationProperties, bool ProjectionOnly) {
+    string DestinationName, ImmutableArray<IPropertySymbol> WritableDestinationProperties, bool ProjectionOnly, 
+    Dictionary<string, MappingCustomization> CustomMappings) {
 
     public List<(string destProp, string srcProp)> GetDestinationMappings() {
         var mappings = new List<(string, string)>();
 
         for (var i = 0; i < WritableDestinationProperties.Length; i++) {
             var destPropName = WritableDestinationProperties[i].Name;
+            if (IsIgnored(destPropName)) {
+                continue;
+            }
             if (TryAddMatching(ref mappings, destPropName, p => p.Name == destPropName)) {
                 continue;
             }
@@ -24,6 +28,9 @@ internal record MapDefinition(string SourceName, ImmutableArray<IPropertySymbol>
 
         return mappings;
     }
+
+    private bool IsIgnored(string destPropName)
+        => CustomMappings.TryGetValue(destPropName, out var mapping) && mapping.Ignore;
 
     private bool TryAddMatching(ref List<(string, string)> mappings, string destPropName, Func<IPropertySymbol, bool> predicate) {
         var srcPropName = SourceProperties.SingleOrDefault(predicate)?.Name;

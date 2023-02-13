@@ -1,8 +1,8 @@
-﻿//namespace AutomapGenerator;
+﻿namespace AutomapGenerator;
 
-//public class MemberMapConfiguration<TSource, TProperty> {
-//    internal MemberMapConfiguration() {
-//    }
+public class MemberMapConfiguration<TSource, TProperty> {
+    internal MemberMapConfiguration() {
+    }
 
-//    public void Ignore() { }
-//}
+    public void Ignore() { }
+}

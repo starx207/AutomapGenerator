@@ -1,9 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Linq.Expressions;
-using System.Text;
-using System.Threading.Tasks;
+﻿using System.Linq.Expressions;
 
 namespace AutomapGenerator;
 public class MapBuilder<TSource, TDestination> {
@@ -11,8 +6,8 @@ public class MapBuilder<TSource, TDestination> {
 
     }
 
-    //public MapBuilder<TSource, TDestination> ForMember<TProperty>(
-    //    Func<TSource, TProperty> destinationMember,
-    //    Action<MemberMapConfiguration<TSource, TProperty>> mapConfiguration
-    //) => this;
+    public MapBuilder<TSource, TDestination> ForMember<TProperty>(
+        Expression<Func<TSource, TProperty>> destinationMember,
+        Expression<Action<MemberMapConfiguration<TSource, TProperty>>> mapConfiguration
+    ) => this;
 }
