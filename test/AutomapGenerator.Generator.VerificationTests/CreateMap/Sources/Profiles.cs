@@ -1,7 +1,6 @@
-﻿namespace AutomapGenerator.Generator.VerificationTests.Sources;
+﻿namespace AutomapGenerator.Generator.VerificationTests.CreateMap.Sources;
 internal static class Profiles {
     public static string BASIC_CREATE_MAP = MapperWithMappings("BasicMapProfile", $"CreateMap<{SourceObj.NAME}, {DestinationObj.NAME}>();");
-    public static string BASIC_CREATE_PROJECTION = MapperWithMappings("BasicMapProfile", $"CreateProjection<{SourceObj.NAME}, {DestinationObj.NAME}>();");
     public static string EMPTY_CONSTRUCTOR = MapperWithMappings("EmptyMapProfile");
     public const string NO_CONSTRUCTOR = @"
 using AutomapGenerator;
@@ -20,18 +19,10 @@ public class BasicMapProfile : MapProfile {{
     public BasicMapProfile() => CreateMap<{SourceObj.NAME}, {DestinationObj.NAME}>();
 }}";
 
-    public static string CREATE_MAP_WITH_IGNORE = MapperWithMappings("IgnoreMemberProfile", $"CreateMap<{SourceObj.NAME}, {DestinationObj.NAME}>().ForMember(d => d.Type, opt => opt.Ignore());");
-
-    public static string CREATE_MAP_WITH_MULTIPLE_IGNORES = MapperWithMappings("IgnoreMemberProfile", 
-        @$"
-CreateMap<{SourceObj.NAME}, {DestinationObj.NAME}>()
-    .ForMember(d => d.Type, opt => opt.Ignore())
-    .ForMember(d => d.InUse, opt => opt.Ignore());");
-
     public static string MultipleSourcesToDestination(params string[] sources)
         => MapperWithMappings("BasicMapProfile", sources.Select(s => $"CreateMap<{s}, {DestinationObj.NAME}>();"));
 
-    public static string SourceToMultipleDestinations(params string[] destinations) 
+    public static string SourceToMultipleDestinations(params string[] destinations)
         => MapperWithMappings("BasicMapProfile", destinations.Select(d => $"CreateMap<{SourceObj.NAME}, {d}>();"));
 
     private static string MapperWithMappings(string mapperName, params string[] mappings) => MapperWithMappings(mapperName, mappings.AsEnumerable());

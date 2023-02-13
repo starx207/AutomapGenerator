@@ -1,4 +1,4 @@
-﻿namespace AutomapGenerator.Generator.VerificationTests.Sources;
+﻿namespace AutomapGenerator.Generator.VerificationTests.CreateMap.Sources;
 internal static class NestedSrcObj {
     public const string NAME = "NestedSrcObj";
 

@@ -1,9 +1,9 @@
-﻿using AutomapGenerator.Generator.VerificationTests.Sources;
+﻿using AutomapGenerator.Generator.VerificationTests.CreateMap.Sources;
 
-namespace AutomapGenerator.Generator.VerificationTests;
+namespace AutomapGenerator.Generator.VerificationTests.CreateMap;
 
 [UsesVerify]
-public class MapperGenerator_CreateMapVerifications {
+public class MapperGenerator_Verifications {
     private const string SNAPSHOT_LOCATION = @"Snapshots\CreateMap";
 
     #region Tests

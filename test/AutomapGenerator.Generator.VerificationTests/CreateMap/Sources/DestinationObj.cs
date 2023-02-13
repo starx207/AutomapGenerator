@@ -1,4 +1,4 @@
-﻿namespace AutomapGenerator.Generator.VerificationTests.Sources;
+﻿namespace AutomapGenerator.Generator.VerificationTests.CreateMap.Sources;
 internal static class DestinationObj {
     public const string NAME = "DestinationObj";
 
@@ -53,6 +53,4 @@ public class {NAME} {{
 }}";
 
     public static string SimpleObjWithName(string name) => SIMPLE_OBJ.Replace(NAME, name);
-
-    public static string NestedObjWithChildName(string childDescName) => SIMPLE_OBJ_FROM_NESTED.Replace("ChildDescription", childDescName);
 }

@@ -1,4 +1,4 @@
-﻿namespace AutomapGenerator.Generator.VerificationTests.Sources;
+﻿namespace AutomapGenerator.Generator.VerificationTests.CreateMap.Sources;
 internal static class SourceObj {
     public const string NAME = "SourceObj";
 
