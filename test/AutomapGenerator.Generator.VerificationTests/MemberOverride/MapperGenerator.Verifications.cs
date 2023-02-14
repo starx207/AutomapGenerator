@@ -22,5 +22,12 @@ public class MapperGenerator_Verifications {
         Profiles.CREATE_MAP_WITH_MULTIPLE_IGNORES
     }, SNAPSHOT_LOCATION);
 
+    [Fact]
+    public Task ExplicitMemberMapping() => Verifier.Verify(new[] {
+        SourceObj.FULL_OBJ,
+        DestinationObj.OBJ_BREAKS_WITH_CONVENTION,
+        Profiles.CREATE_MAP_FOR_OBJ_BREAKS_WITH_CONVENTION
+    }, SNAPSHOT_LOCATION);
+
     #endregion
 }

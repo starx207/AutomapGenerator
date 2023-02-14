@@ -15,6 +15,9 @@ internal record MapDefinition(string SourceName, ImmutableArray<IPropertySymbol>
             if (IsIgnored(destPropName)) {
                 continue;
             }
+            if (TryGetExplicitMapping(ref mappings, destPropName)) {
+                continue;
+            }
             if (TryAddMatching(ref mappings, destPropName, p => p.Name == destPropName)) {
                 continue;
             }
@@ -27,6 +30,14 @@ internal record MapDefinition(string SourceName, ImmutableArray<IPropertySymbol>
         }
 
         return mappings;
+    }
+
+    private bool TryGetExplicitMapping(ref List<(string, string)> mappings, string destPropName) {
+        if (CustomMappings.TryGetValue(destPropName, out var customMapping) && customMapping.ExplicitMapping.Length > 0) {
+            mappings.Add((destPropName, new string(customMapping.ExplicitMapping)));
+            return true;
+        }
+        return false;
     }
 
     private bool IsIgnored(string destPropName)

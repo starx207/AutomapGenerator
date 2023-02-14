@@ -19,4 +19,12 @@ public class {NAME} {{
     public Guid Id {{ get; set; }}
     public string? Type {{ get; set; }}
 }}";
+
+    public const string OBJ_BREAKS_WITH_CONVENTION = $@"
+namespace SampleMappingConsumer.Models;
+
+public class {NAME} {{
+    public string? StringProperty {{ get; set; }}
+    public bool HasTimestamp {{ get; set; }}
+}}";
 }

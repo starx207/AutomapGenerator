@@ -70,16 +70,67 @@ internal static class MapDefinitionHelper {
             }
             var destinationProp = destExpr.Name.Identifier.Text;
 
-            // Check if it should be ignored
-            if (args[1].Expression is SimpleLambdaExpressionSyntax {
-                Body: InvocationExpressionSyntax {
-                    Expression: MemberAccessExpressionSyntax { Name.Identifier.Text: "Ignore"}
+            if (ShouldIgnore(args[1].Expression)) {
+                customMappings[destinationProp] = new MappingCustomization(ignore: true);
+                continue;
+            }
+
+            // Check if we have an explicit mapping
+            if (TryGetMapFromInvocation(args[1].Expression, out var mapFromInvocation)) {
+                if (TryGetExplicitMapping(mapFromInvocation, out var explicitMapping)) {
+                    customMappings[destinationProp] = new MappingCustomization(explicitMapping: explicitMapping);
                 }
-            }) {
-                customMappings.Add(destinationProp, new MappingCustomization(ignore: true));
+                continue;
             }
         }
         return customMappings;
+    }
+
+    private static bool ShouldIgnore(ExpressionSyntax expression) => expression is SimpleLambdaExpressionSyntax {
+        Body: InvocationExpressionSyntax {
+            Expression: MemberAccessExpressionSyntax { Name.Identifier.Text: "Ignore" }
+        }
+    };
+
+    private static bool TryGetMapFromInvocation(ExpressionSyntax expression, [NotNullWhen(true)] out InvocationExpressionSyntax? mapFromInvocation) {
+        if (expression is SimpleLambdaExpressionSyntax {
+            Body: InvocationExpressionSyntax {
+                Expression: MemberAccessExpressionSyntax { Name.Identifier.Text: "MapFrom" }
+            } invocation
+        }) {
+            mapFromInvocation = invocation;
+            return true;
+        }
+
+        mapFromInvocation = null;
+        return false;
+    }
+
+    private static bool TryGetExplicitMapping(InvocationExpressionSyntax mapFromInvocation, [NotNullWhen(true)] out char[]? mapping) {
+        if (mapFromInvocation.ArgumentList.Arguments[0].Expression is not SimpleLambdaExpressionSyntax lambdaExpr) {
+        mapping = null;
+            return false;
+        }
+
+        // TODO: If I want to add support for more robust expressions,
+        //       I could use this. However, it would require a lot of other changes
+        //       to accomodate expressions beyond simple member access due to the lambda
+        //       parameter name.
+        //mapping = lambdaExpr.Body.ToFullString();
+
+        var srcMemberChain = new List<string>();
+        var srcExpression = lambdaExpr.Body as MemberAccessExpressionSyntax;
+        while (srcExpression is not null) {
+            srcMemberChain.Insert(0, srcExpression.Name.Identifier.Text);
+            srcExpression = srcExpression.Expression as MemberAccessExpressionSyntax;
+        }
+
+        if (srcMemberChain.Count == 0) {
+            mapping = null;
+            return false;
+        }
+        mapping = string.Join(".", srcMemberChain).ToCharArray();
+        return true;
     }
 
     private static ITypeSymbol GetTypeSymbol(SemanticModel semanticModel, TypeSyntax sourceType, CancellationToken token) 
