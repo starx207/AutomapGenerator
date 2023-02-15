@@ -8,52 +8,98 @@ namespace AutomapGenerator.SourceGenerator.Internal;
 
 internal static class MapDefinitionHelper {
 
-    public static IEnumerable<MapDefinition> ConvertToMapDefinitions(Compilation compilation, ImmutableArray<InvocationExpressionSyntax> invocations, CancellationToken token) {
-        var definitions = new List<MapDefinition>();
+    public static IEnumerable<MapDefinition> ConvertToMapDefinitions(Compilation compilation, ImmutableArray<(ClassDeclarationSyntax, InvocationExpressionSyntax[])> profiles, CancellationToken token) {
+        var allDefinitions = new List<MapDefinition>();
 
-        for (var i = 0; i < invocations.Length; i++) {
-            var invocation = invocations[i];
-            if (ConvertToMapDefinition(invocation, compilation, token) is { } def) {
-                definitions.Add(def);
+        for (var i = 0; i < profiles.Length; i++) {
+            (var classSyntax, var invocations) = profiles[i];
+            var definition = new MapDefinition(classSyntax);
+
+            for (var j = 0; j < invocations.Length; j++) {
+                var invocation = invocations[j];
+                if (TryExtractCreateMapOrProjectionInvocation(invocation, compilation, token, out var mapOrProjection)) {
+                    definition.Mappings.Add(ConvertToMapping(mapOrProjection, token));
+                    continue;
+                }
+
+                if (TryExtractRecognizedSourcePrefixes(invocation, compilation, token, out var prefixes)) {
+                    definition.RecognizedSourcePrefixes.AddRange(prefixes);
+                    continue;
+                }
+            }
+
+            if (definition.Mappings.Any()) {
+                allDefinitions.Add(definition);
             }
         }
 
         // TODO: Check for duplicate mapping definitions. Add a diagnostic if any are found
 
-        return definitions;
+        return allDefinitions;
     }
 
-    private static MapDefinition? ConvertToMapDefinition(InvocationExpressionSyntax node, Compilation compilation, CancellationToken token) {
+    private static bool TryExtractRecognizedSourcePrefixes(InvocationExpressionSyntax node, Compilation compilation, CancellationToken token, out string[] prefixes) {
+        prefixes = Array.Empty<string>();
+        if (!TryExtractMapProfileMethodInvocation(node, compilation, token, "RecognizePrefixes", out var _, out var _)) {
+            return false;
+        }
+
+        var discovered = new List<string>();
+        for (var i = 0; i < node.ArgumentList.Arguments.Count; i++) {
+            var arg = node.ArgumentList.Arguments[i];
+            if (arg.Expression is LiteralExpressionSyntax { RawKind: (int)SyntaxKind.StringLiteralExpression } literal) {
+                discovered.Add(literal.Token.ValueText);
+            }
+        }
+        prefixes = discovered.ToArray();
+        return true;
+    }
+
+    private static bool TryExtractCreateMapOrProjectionInvocation(InvocationExpressionSyntax node, Compilation compilation, CancellationToken token, [NotNullWhen(true)] out MapOrProjectionInvocation? invocation) {
+        invocation = null;
         if (!TryExtractGenericName(node.Expression, out var genericName)) {
-            return null;
+            return false;
         }
 
-        var semanticModel = compilation.GetSemanticModel(genericName.SyntaxTree);
-        if (semanticModel.GetSymbolInfo(genericName, token) is not { Symbol: IMethodSymbol symbol }) {
-            return null;
+        if (!TryExtractMapProfileMethodInvocation(genericName, compilation, token, new[] { "CreateMap", "CreateProjection" }, out var semanticModel, out var symbol)) {
+            return false;
         }
 
+        invocation = new(node, genericName, symbol, semanticModel);
+        return true;
+    }
+
+    private static bool TryExtractMapProfileMethodInvocation(ExpressionSyntax expressionSyntax, Compilation compilation, CancellationToken token, string desiredMethod, 
+        [NotNullWhen(true)] out SemanticModel? semanticModel, [NotNullWhen(true)] out IMethodSymbol? methodSymbol)
+        => TryExtractMapProfileMethodInvocation(expressionSyntax, compilation, token, new[] { desiredMethod }, out semanticModel, out methodSymbol);
+
+    private static bool TryExtractMapProfileMethodInvocation(ExpressionSyntax expressionSyntax, Compilation compilation, CancellationToken token, string[] desiredMethods, 
+        [NotNullWhen(true)] out SemanticModel? semanticModel, [NotNullWhen(true)] out IMethodSymbol? methodSymbol) {
+
+        methodSymbol = null;
+        semanticModel = compilation.GetSemanticModel(expressionSyntax.SyntaxTree);
         // TODO: If I add the reference, how could I make this better?
-        if (symbol.ContainingType.ToDisplayString() != "AutomapGenerator.MapProfile") {
-            return null;
-        }
+        if (semanticModel.GetSymbolInfo(expressionSyntax, token) is { Symbol: IMethodSymbol symbol }
+            && symbol.ContainingType.ToDisplayString() == "AutomapGenerator.MapProfile"
+            && desiredMethods.Contains(symbol.Name)) {
 
-        var projectionOnly = true;
-        if (symbol.Name == "CreateMap") {
-            projectionOnly = false;
-        } else if (symbol.Name != "CreateProjection") {
-            return null;
+            methodSymbol = symbol;
+            return true;
         }
+        return false;
+    }
 
-        var sourceSymbol = GetTypeSymbol(semanticModel, genericName.TypeArgumentList.Arguments[0], token);
-        var destinationSymbol = GetTypeSymbol(semanticModel, genericName.TypeArgumentList.Arguments[1], token);
+    private static MapDefinition.Mapping ConvertToMapping(MapOrProjectionInvocation invocation, CancellationToken token) {
+        var projectionOnly = invocation.Symbol.Name == "CreateProjection";
+        var sourceSymbol = GetTypeSymbol(invocation.Semantic, invocation.GenericName.TypeArgumentList.Arguments[0], token);
+        var destinationSymbol = GetTypeSymbol(invocation.Semantic, invocation.GenericName.TypeArgumentList.Arguments[1], token);
 
         return new(sourceSymbol.ToDisplayString(),
             GetAllPropertySymbols(sourceSymbol),
             destinationSymbol.ToDisplayString(),
             GetWritablePropertySymbols(destinationSymbol),
             projectionOnly,
-            GetCustomMappings(node));
+            GetCustomMappings(invocation.Origin));
     }
 
     private static Dictionary<string, MappingCustomization> GetCustomMappings(InvocationExpressionSyntax node) {
@@ -175,4 +221,6 @@ internal static class MapDefinitionHelper {
         genericName = null;
         return false;
     }
+
+    private record MapOrProjectionInvocation(InvocationExpressionSyntax Origin, GenericNameSyntax GenericName, IMethodSymbol Symbol, SemanticModel Semantic);
 }

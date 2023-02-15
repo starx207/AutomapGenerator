@@ -164,9 +164,12 @@ internal static class MapGenHelper {
 
         var switchSections = new List<SwitchSectionSyntax>();
         for (var i = 0; i < srcMappings.Length; i++) {
-            var mapping = srcMappings[i];
-            if (!mapping.ProjectionOnly) {
-                switchSections.Add(CreateMapMethodSwitchSection(mapping));
+            var definition = srcMappings[i];
+            for (var j = 0; j < definition.Mappings.Count; j++) {
+                var mapping = definition.Mappings[j];
+                if (!mapping.ProjectionOnly) {
+                    switchSections.Add(CreateMapMethodSwitchSection(definition, mapping));
+                }
             }
         }
 
@@ -197,8 +200,11 @@ internal static class MapGenHelper {
 
         var switchSections = new List<SwitchSectionSyntax>();
         for (var i = 0; i < srcMappings.Length; i++) {
-            var mapping = srcMappings[i];
-            switchSections.Add(CreateProjectToMethodSwitchSection(mapping));
+            var definition = srcMappings[i];
+            for (var j = 0; j < definition.Mappings.Count; j++) {
+                var mapping = definition.Mappings[j];
+                switchSections.Add(CreateProjectToMethodSwitchSection(definition, mapping));
+            }
         }
 
         // Add the default switch section
@@ -238,14 +244,14 @@ internal static class MapGenHelper {
                 ));
     }
 
-    private static SwitchSectionSyntax CreateMapMethodSwitchSection(MapDefinition mapping) {
+    private static SwitchSectionSyntax CreateMapMethodSwitchSection(MapDefinition definition, MapDefinition.Mapping mapping) {
         var patternMatchSrcName = ParseTypeName(mapping.SourceName);
         var patternMatchDestName = ParseTypeName(mapping.DestinationName);
         var matchedSrcVarName = "s";
         var matchedDestVarName = "d";
 
         var expressions = new List<StatementSyntax>();
-        var destMappings = mapping.GetDestinationMappings();
+        var destMappings = definition.GetDestinationMappings(mapping);
         for (var i = 0; i < destMappings.Count; i++) {
             (var destProp, var srcProp) = destMappings[i];
 
@@ -285,14 +291,14 @@ internal static class MapGenHelper {
             .WithStatements(List(expressions));
     }
 
-    private static SwitchSectionSyntax CreateProjectToMethodSwitchSection(MapDefinition mapping) {
+    private static SwitchSectionSyntax CreateProjectToMethodSwitchSection(MapDefinition definition, MapDefinition.Mapping mapping) {
         var patternMatchSrcName = ParseTypeName(mapping.SourceName);
         var patternMatchDestName = ParseTypeName(mapping.DestinationName);
         var matchedSrcVarName = "s";
         var lambdaVarName = "src";
 
         var expressions = new List<SyntaxNodeOrToken>();
-        var destMappings = mapping.GetDestinationMappings();
+        var destMappings = definition.GetDestinationMappings(mapping);
         for (var i = 0; i < destMappings.Count; i++) {
             (var destProp, var srcProp) = destMappings[i];
 

@@ -13,7 +13,7 @@ public class MapperGenerator : IIncrementalGenerator {
                 predicate: static (m, _) => IsSyntaxCandidateForMapping(m),
                 transform: static (ctx, tok) => MapperSyntaxParser.GetMappingProfileDeclaration(ctx, tok))
             .Where(static m => m is not null)
-            .SelectMany(static (m, _) => MapperSyntaxParser.ExtractConstructorInvocations(m!));
+            .Select(static (m, _) => (m!, MapperSyntaxParser.ExtractConstructorInvocations(m!)));
 
         var mapDefinitions = context.CompilationProvider.Combine(mapInvocations.Collect())
             .Select(static (src, tok) => MapDefinitionHelper.ConvertToMapDefinitions(src.Left, src.Right, tok));

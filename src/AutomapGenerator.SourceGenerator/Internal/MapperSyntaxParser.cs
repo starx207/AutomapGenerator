@@ -5,7 +5,7 @@ namespace AutomapGenerator.SourceGenerator.Internal;
 
 internal static class MapperSyntaxParser {
 
-    public static IEnumerable<InvocationExpressionSyntax> ExtractConstructorInvocations(ClassDeclarationSyntax classDeclaration) {
+    public static InvocationExpressionSyntax[] ExtractConstructorInvocations(ClassDeclarationSyntax classDeclaration) {
         for (var i = 0; i < classDeclaration.Members.Count; i++) {
             var member = classDeclaration.Members[i];
             if (member is not ConstructorDeclarationSyntax { } ctor) {
@@ -29,10 +29,10 @@ internal static class MapperSyntaxParser {
                         invocations.Add(bodyExpr);
                     }
                 }
-                return invocations;
+                return invocations.ToArray();
             }
         }
-        return Enumerable.Empty<InvocationExpressionSyntax>();
+        return Array.Empty<InvocationExpressionSyntax>();
     }
 
 
