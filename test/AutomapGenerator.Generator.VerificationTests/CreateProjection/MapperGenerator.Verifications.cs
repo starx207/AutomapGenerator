@@ -10,9 +10,9 @@ public class MapperGenerator_Verifications {
 
     [Fact]
     public Task SimpleObjectProjection() => Verifier.Verify(new[] {
-        SourceObj.FULL_OBJ,
-        DestinationObj.FULL_OBJ,
-        Profiles.BASIC_CREATE_PROJECTION
+        SourceReader.GetSourceFor<ProjectionSource>(),
+        SourceReader.GetSourceFor<ProjectionDestination>(),
+        SourceReader.GetSourceFor<ProjectionProfile>()
     }, SNAPSHOT_LOCATION);
 
     #endregion

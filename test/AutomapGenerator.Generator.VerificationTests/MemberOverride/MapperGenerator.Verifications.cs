@@ -10,23 +10,23 @@ public class MapperGenerator_Verifications {
 
     [Fact]
     public Task IgnoreUnmappableProperty() => Verifier.Verify(new[] {
-        SourceObj.SIMPLE_OBJ,
-        DestinationObj.SIMPLE_OBJ,
-        Profiles.CREATE_MAP_WITH_IGNORE
+        SourceReader.GetSourceFor<SimpleSourceObj>(),
+        SourceReader.GetSourceFor<SimpleDestinationObj>(),
+        SourceReader.GetSourceFor<IgnorePropertyProfile>()
     }, SNAPSHOT_LOCATION);
 
     [Fact]
     public Task MultipleIgnoredProperties() => Verifier.Verify(new[] {
-        SourceObj.FULL_OBJ,
-        DestinationObj.FULL_OBJ,
-        Profiles.CREATE_MAP_WITH_MULTIPLE_IGNORES
+        SourceReader.GetSourceFor<FullSourceObj>(),
+        SourceReader.GetSourceFor<FullDestinationObj>(),
+        SourceReader.GetSourceFor<IgnoreMultiplePropsProfile>()
     }, SNAPSHOT_LOCATION);
 
     [Fact]
     public Task ExplicitMemberMapping() => Verifier.Verify(new[] {
-        SourceObj.FULL_OBJ,
-        DestinationObj.OBJ_BREAKS_WITH_CONVENTION,
-        Profiles.CREATE_MAP_FOR_OBJ_BREAKS_WITH_CONVENTION
+        SourceReader.GetSourceFor<FullSourceObj>(),
+        SourceReader.GetSourceFor<DestinationThatBreaksNamingConvention>(),
+        SourceReader.GetSourceFor<MapExplicitlyProfile>()
     }, SNAPSHOT_LOCATION);
 
     #endregion

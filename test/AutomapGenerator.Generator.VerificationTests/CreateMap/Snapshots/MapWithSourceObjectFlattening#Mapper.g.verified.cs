@@ -12,13 +12,13 @@ namespace AutomapGenerator
         {
             switch (source, destination)
             {
-                case (SampleMappingConsumer.Models.SourceObj s, SampleMappingConsumer.Models.DestinationObj d):
+                case (AutomapGenerator.Generator.VerificationTests.CreateMap.Sources.SourceObjWithNesting s, AutomapGenerator.Generator.VerificationTests.CreateMap.Sources.DestinationFromNestedSrc d):
                     d.Id = s.Id;
                     d.ChildObjDescription = s.ChildObj.Description;
                     d.ChildObjOtherProp = s.ChildObj.OtherProp;
-                    d.SourceObjChildObjDescription = s.ChildObj.Description;
-                    d.ChildObjNestedSrcObjOtherProp = s.ChildObj.OtherProp;
-                    d.NestedSrcObjDescription = s.NestedSrcObj.Description;
+                    d.SourceObjWithNestingChildObjDescription = s.ChildObj.Description;
+                    d.ChildObjNestedSourceOtherProp = s.ChildObj.OtherProp;
+                    d.NestedSourceDescription = s.NestedSource.Description;
                     break;
                 default:
                     throw new MappingException($"Mapping from {source.GetType().Name} to {typeof(TDestination).Name} has not been configured.");
@@ -33,9 +33,9 @@ namespace AutomapGenerator
             var destInstance = new TDestination();
             switch (source, destInstance)
             {
-                case (global::System.Linq.IQueryable<SampleMappingConsumer.Models.SourceObj> s, SampleMappingConsumer.Models.DestinationObj):
-                    return global::System.Linq.Queryable.Cast<TDestination>(global::System.Linq.Queryable.Select(s, src => new SampleMappingConsumer.Models.DestinationObj()
-                    {Id = src.Id, ChildObjDescription = src.ChildObj.Description, ChildObjOtherProp = src.ChildObj.OtherProp, SourceObjChildObjDescription = src.ChildObj.Description, ChildObjNestedSrcObjOtherProp = src.ChildObj.OtherProp, NestedSrcObjDescription = src.NestedSrcObj.Description}));
+                case (global::System.Linq.IQueryable<AutomapGenerator.Generator.VerificationTests.CreateMap.Sources.SourceObjWithNesting> s, AutomapGenerator.Generator.VerificationTests.CreateMap.Sources.DestinationFromNestedSrc):
+                    return global::System.Linq.Queryable.Cast<TDestination>(global::System.Linq.Queryable.Select(s, src => new AutomapGenerator.Generator.VerificationTests.CreateMap.Sources.DestinationFromNestedSrc()
+                    {Id = src.Id, ChildObjDescription = src.ChildObj.Description, ChildObjOtherProp = src.ChildObj.OtherProp, SourceObjWithNestingChildObjDescription = src.ChildObj.Description, ChildObjNestedSourceOtherProp = src.ChildObj.OtherProp, NestedSourceDescription = src.NestedSource.Description}));
                 default:
                     throw new MappingException($"Mapping from {source.GetType().Name} to {typeof(TDestination).Name} has not been configured.");
             }

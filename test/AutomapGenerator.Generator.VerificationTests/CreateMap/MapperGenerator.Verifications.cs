@@ -10,67 +10,67 @@ public class MapperGenerator_Verifications {
 
     [Fact]
     public Task SimpleObjectMap() => Verifier.Verify(new[] {
-        SourceObj.FULL_OBJ,
-        DestinationObj.FULL_OBJ,
-        Profiles.BASIC_CREATE_MAP
+        SourceReader.GetSourceFor<FullSourceObj>(),
+        SourceReader.GetSourceFor<FullDestinationObj>(),
+        SourceReader.GetSourceFor<BasicMapProfile>()
     }, SNAPSHOT_LOCATION);
 
     [Fact]
     public Task MultipleDestinationMap() => Verifier.Verify(new[] {
-        SourceObj.SIMPLE_OBJ,
-        DestinationObj.SimpleObjWithName("Destination1Obj"),
-        DestinationObj.SimpleObjWithName("Destination2Obj"),
-        Profiles.SourceToMultipleDestinations("Destination1Obj", "Destination2Obj")
+        SourceReader.GetSourceFor<SimpleSourceObj>(),
+        SourceReader.GetSourceFor<SimpleDestinationObj>(),
+        SourceReader.GetSourceFor<OtherSimpleDestinationObj>(),
+        SourceReader.GetSourceFor<SourceToMultipleDestinationsProfile>()
     }, SNAPSHOT_LOCATION);
 
     [Fact]
     public Task MultipleSourceMap() => Verifier.Verify(new[] {
-        SourceObj.SimpleObjWithName("Source1Obj"),
-        SourceObj.SimpleObjWithName("Source2Obj"),
-        DestinationObj.SIMPLE_OBJ,
-        Profiles.MultipleSourcesToDestination("Source1Obj", "Source2Obj")
+        SourceReader.GetSourceFor<SimpleSourceObj>(),
+        SourceReader.GetSourceFor<OtherSimpleSourceObj>(),
+        SourceReader.GetSourceFor<SimpleDestinationObj>(),
+        SourceReader.GetSourceFor<MultipleSourcesToDestinationProfile>()
     }, SNAPSHOT_LOCATION);
 
     [Fact]
-    public Task MapperWithEmptyConstructor() => Verifier.Verify(Profiles.EMPTY_CONSTRUCTOR, SNAPSHOT_LOCATION);
+    public Task MapperWithEmptyConstructor() => Verifier.Verify(SourceReader.GetSourceFor<EmptyConstructorProfile>(), SNAPSHOT_LOCATION);
 
     [Fact]
-    public Task MapperWithNoConstructor() => Verifier.Verify(Profiles.NO_CONSTRUCTOR, SNAPSHOT_LOCATION);
+    public Task MapperWithNoConstructor() => Verifier.Verify(SourceReader.GetSourceFor<NoConstructorProfile>(), SNAPSHOT_LOCATION);
 
     [Fact]
     public Task SimpleObjectMap_WithArrowFunction() => Verifier.Verify(new[] {
-        SourceObj.FULL_OBJ,
-        DestinationObj.FULL_OBJ,
-        Profiles.ARROW_CONSTRUCTOR
+        SourceReader.GetSourceFor<FullSourceObj>(),
+        SourceReader.GetSourceFor<FullDestinationObj>(),
+        SourceReader.GetSourceFor<ArrowConstructorProfile>()
     }, SNAPSHOT_LOCATION);
 
     [Fact]
     public Task MapWithReadonlyDestinations() => Verifier.Verify(new[] {
-        SourceObj.FULL_OBJ,
-        DestinationObj.FULL_OBJ_WITH_READONLY_PROP,
-        Profiles.BASIC_CREATE_MAP
+        SourceReader.GetSourceFor<FullSourceObj>(),
+        SourceReader.GetSourceFor<DestinationWithReadonlyProp>(),
+        SourceReader.GetSourceFor<MapWithReadonlyDestinationProfile>()
     }, SNAPSHOT_LOCATION);
 
     [Fact]
     public Task MapWithReadonlySources() => Verifier.Verify(new[] {
-        SourceObj.FULL_OBJ_WITH_READONLY_PROP,
-        DestinationObj.FULL_OBJ,
-        Profiles.BASIC_CREATE_MAP
+        SourceReader.GetSourceFor<SourceWithReadonlyProp>(),
+        SourceReader.GetSourceFor<FullDestinationObj>(),
+        SourceReader.GetSourceFor<MapWithReadonlySourceProfile>()
     }, SNAPSHOT_LOCATION);
 
     [Fact]
     public Task MapWithSourceObjectPrefixes() => Verifier.Verify(new[] {
-        SourceObj.FULL_OBJ,
-        DestinationObj.FULL_OBJ_WITH_SRC_PREFIX,
-        Profiles.BASIC_CREATE_MAP
+        SourceReader.GetSourceFor<FullSourceObj>(),
+        SourceReader.GetSourceFor<DestinationWithSrcPrefix>(),
+        SourceReader.GetSourceFor<PrefixedDestinationProfile>()
     }, SNAPSHOT_LOCATION);
 
     [Fact]
     public Task MapWithSourceObjectFlattening() => Verifier.Verify(new[] {
-        NestedSrcObj.FULL_OBJ,
-        SourceObj.SIMPLE_OBJ_WITH_NESTING,
-        DestinationObj.SIMPLE_OBJ_FROM_NESTED,
-        Profiles.BASIC_CREATE_MAP
+        SourceReader.GetSourceFor<NestedSource>(),
+        SourceReader.GetSourceFor<SourceObjWithNesting>(),
+        SourceReader.GetSourceFor<DestinationFromNestedSrc>(),
+        SourceReader.GetSourceFor<FlatteningProfile>()
     }, SNAPSHOT_LOCATION);
 
     #endregion
