@@ -12,13 +12,13 @@ namespace AutomapGenerator
         {
             switch (source, destination)
             {
-                case (SampleMappingConsumer.Models.SourceObj s, SampleMappingConsumer.Models.DestinationObj d):
+                case (AutomapGenerator.Generator.VerificationTests.RecognizePrefixes.Sources.SourceWithSinglePrefix s, AutomapGenerator.Generator.VerificationTests.RecognizePrefixes.Sources.UnprefixedObject d):
                     d.Id = s.TestId;
                     d.Type = s.TestType;
                     d.Timestamp = s.TestTimestamp;
                     d.InUse = s.TestInUse;
                     break;
-                case (SampleMappingConsumer.Models.SourceObjAlternate s, SampleMappingConsumer.Models.DestinationObj d):
+                case (AutomapGenerator.Generator.VerificationTests.RecognizePrefixes.Sources.OtherSourceWithSinglePrefix s, AutomapGenerator.Generator.VerificationTests.RecognizePrefixes.Sources.UnprefixedObject d):
                     break;
                 default:
                     throw new MappingException($"Mapping from {source.GetType().Name} to {typeof(TDestination).Name} has not been configured.");
@@ -33,11 +33,11 @@ namespace AutomapGenerator
             var destInstance = new TDestination();
             switch (source, destInstance)
             {
-                case (global::System.Linq.IQueryable<SampleMappingConsumer.Models.SourceObj> s, SampleMappingConsumer.Models.DestinationObj):
-                    return global::System.Linq.Queryable.Cast<TDestination>(global::System.Linq.Queryable.Select(s, src => new SampleMappingConsumer.Models.DestinationObj()
+                case (global::System.Linq.IQueryable<AutomapGenerator.Generator.VerificationTests.RecognizePrefixes.Sources.SourceWithSinglePrefix> s, AutomapGenerator.Generator.VerificationTests.RecognizePrefixes.Sources.UnprefixedObject):
+                    return global::System.Linq.Queryable.Cast<TDestination>(global::System.Linq.Queryable.Select(s, src => new AutomapGenerator.Generator.VerificationTests.RecognizePrefixes.Sources.UnprefixedObject()
                     {Id = src.TestId, Type = src.TestType, Timestamp = src.TestTimestamp, InUse = src.TestInUse}));
-                case (global::System.Linq.IQueryable<SampleMappingConsumer.Models.SourceObjAlternate> s, SampleMappingConsumer.Models.DestinationObj):
-                    return global::System.Linq.Queryable.Cast<TDestination>(global::System.Linq.Queryable.Select(s, src => new SampleMappingConsumer.Models.DestinationObj()
+                case (global::System.Linq.IQueryable<AutomapGenerator.Generator.VerificationTests.RecognizePrefixes.Sources.OtherSourceWithSinglePrefix> s, AutomapGenerator.Generator.VerificationTests.RecognizePrefixes.Sources.UnprefixedObject):
+                    return global::System.Linq.Queryable.Cast<TDestination>(global::System.Linq.Queryable.Select(s, src => new AutomapGenerator.Generator.VerificationTests.RecognizePrefixes.Sources.UnprefixedObject()
                     {}));
                 default:
                     throw new MappingException($"Mapping from {source.GetType().Name} to {typeof(TDestination).Name} has not been configured.");

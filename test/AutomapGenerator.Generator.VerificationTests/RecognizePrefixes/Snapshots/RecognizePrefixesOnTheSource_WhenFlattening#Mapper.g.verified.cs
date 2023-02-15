@@ -12,7 +12,7 @@ namespace AutomapGenerator
         {
             switch (source, destination)
             {
-                case (Verification.Models.SourceObject s, Verification.Models.DestinationObject d):
+                case (AutomapGenerator.Generator.VerificationTests.RecognizePrefixes.Sources.SourceWithNestedObject s, AutomapGenerator.Generator.VerificationTests.RecognizePrefixes.Sources.FlattenedDestination d):
                     d.ChildDescription = s.TestChild.TestDescription;
                     d.ChildOtherProp = s.TestChild.OtherProp;
                     break;
@@ -29,8 +29,8 @@ namespace AutomapGenerator
             var destInstance = new TDestination();
             switch (source, destInstance)
             {
-                case (global::System.Linq.IQueryable<Verification.Models.SourceObject> s, Verification.Models.DestinationObject):
-                    return global::System.Linq.Queryable.Cast<TDestination>(global::System.Linq.Queryable.Select(s, src => new Verification.Models.DestinationObject()
+                case (global::System.Linq.IQueryable<AutomapGenerator.Generator.VerificationTests.RecognizePrefixes.Sources.SourceWithNestedObject> s, AutomapGenerator.Generator.VerificationTests.RecognizePrefixes.Sources.FlattenedDestination):
+                    return global::System.Linq.Queryable.Cast<TDestination>(global::System.Linq.Queryable.Select(s, src => new AutomapGenerator.Generator.VerificationTests.RecognizePrefixes.Sources.FlattenedDestination()
                     {ChildDescription = src.TestChild.TestDescription, ChildOtherProp = src.TestChild.OtherProp}));
                 default:
                     throw new MappingException($"Mapping from {source.GetType().Name} to {typeof(TDestination).Name} has not been configured.");

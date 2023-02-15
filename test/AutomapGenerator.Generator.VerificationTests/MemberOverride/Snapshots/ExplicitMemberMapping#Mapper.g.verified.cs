@@ -12,7 +12,7 @@ namespace AutomapGenerator
         {
             switch (source, destination)
             {
-                case (SampleMappingConsumer.Models.SourceObj s, SampleMappingConsumer.Models.DestinationObj d):
+                case (AutomapGenerator.Generator.VerificationTests.MemberOverride.Sources.FullSourceObj s, AutomapGenerator.Generator.VerificationTests.MemberOverride.Sources.DestinationThatBreaksNamingConvention d):
                     d.StringProperty = s.Type;
                     d.HasTimestamp = s.Timestamp.HasValue;
                     break;
@@ -29,8 +29,8 @@ namespace AutomapGenerator
             var destInstance = new TDestination();
             switch (source, destInstance)
             {
-                case (global::System.Linq.IQueryable<SampleMappingConsumer.Models.SourceObj> s, SampleMappingConsumer.Models.DestinationObj):
-                    return global::System.Linq.Queryable.Cast<TDestination>(global::System.Linq.Queryable.Select(s, src => new SampleMappingConsumer.Models.DestinationObj()
+                case (global::System.Linq.IQueryable<AutomapGenerator.Generator.VerificationTests.MemberOverride.Sources.FullSourceObj> s, AutomapGenerator.Generator.VerificationTests.MemberOverride.Sources.DestinationThatBreaksNamingConvention):
+                    return global::System.Linq.Queryable.Cast<TDestination>(global::System.Linq.Queryable.Select(s, src => new AutomapGenerator.Generator.VerificationTests.MemberOverride.Sources.DestinationThatBreaksNamingConvention()
                     {StringProperty = src.Type, HasTimestamp = src.Timestamp.HasValue}));
                 default:
                     throw new MappingException($"Mapping from {source.GetType().Name} to {typeof(TDestination).Name} has not been configured.");

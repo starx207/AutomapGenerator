@@ -1,6 +1,4 @@
-﻿using AutomapGenerator.Generator.VerificationTests.MemberOverride.Sources;
-
-namespace AutomapGenerator.Generator.VerificationTests.MemberOverride;
+﻿namespace AutomapGenerator.Generator.VerificationTests.MemberOverride;
 
 [UsesVerify]
 public class MapperGenerator_Verifications {
@@ -10,23 +8,23 @@ public class MapperGenerator_Verifications {
 
     [Fact]
     public Task IgnoreUnmappableProperty() => Verifier.Verify(new[] {
-        SourceObj.SIMPLE_OBJ,
-        DestinationObj.SIMPLE_OBJ,
-        Profiles.CREATE_MAP_WITH_IGNORE
+        SourceReader.GetSourceFor<Sources.SimpleSourceObj>(),
+        SourceReader.GetSourceFor<Sources.SimpleDestinationObj>(),
+        SourceReader.GetSourceFor<Sources.IgnorePropertyProfile>()
     }, SNAPSHOT_LOCATION);
 
     [Fact]
     public Task MultipleIgnoredProperties() => Verifier.Verify(new[] {
-        SourceObj.FULL_OBJ,
-        DestinationObj.FULL_OBJ,
-        Profiles.CREATE_MAP_WITH_MULTIPLE_IGNORES
+        SourceReader.GetSourceFor<Sources.FullSourceObj>(),
+        SourceReader.GetSourceFor<Sources.FullDestinationObj>(),
+        SourceReader.GetSourceFor<Sources.IgnoreMultiplePropsProfile>()
     }, SNAPSHOT_LOCATION);
 
     [Fact]
     public Task ExplicitMemberMapping() => Verifier.Verify(new[] {
-        SourceObj.FULL_OBJ,
-        DestinationObj.OBJ_BREAKS_WITH_CONVENTION,
-        Profiles.CREATE_MAP_FOR_OBJ_BREAKS_WITH_CONVENTION
+        SourceReader.GetSourceFor<Sources.FullSourceObj>(),
+        SourceReader.GetSourceFor<Sources.DestinationThatBreaksNamingConvention>(),
+        SourceReader.GetSourceFor<Sources.MapExplicitlyProfile>()
     }, SNAPSHOT_LOCATION);
 
     #endregion

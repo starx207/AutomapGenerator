@@ -1,6 +1,4 @@
-﻿using AutomapGenerator.Generator.VerificationTests.CreateProjection.Sources;
-
-namespace AutomapGenerator.Generator.VerificationTests.CreateProjection;
+﻿namespace AutomapGenerator.Generator.VerificationTests.CreateProjection;
 
 [UsesVerify]
 public class MapperGenerator_Verifications {
@@ -10,9 +8,9 @@ public class MapperGenerator_Verifications {
 
     [Fact]
     public Task SimpleObjectProjection() => Verifier.Verify(new[] {
-        SourceObj.FULL_OBJ,
-        DestinationObj.FULL_OBJ,
-        Profiles.BASIC_CREATE_PROJECTION
+        SourceReader.GetSourceFor<Sources.ProjectionSource>(),
+        SourceReader.GetSourceFor<Sources.ProjectionDestination>(),
+        SourceReader.GetSourceFor<Sources.ProjectionProfile>()
     }, SNAPSHOT_LOCATION);
 
     #endregion

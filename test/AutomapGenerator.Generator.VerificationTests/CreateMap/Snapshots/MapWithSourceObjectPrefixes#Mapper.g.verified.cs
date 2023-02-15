@@ -12,9 +12,9 @@ namespace AutomapGenerator
         {
             switch (source, destination)
             {
-                case (SampleMappingConsumer.Models.SourceObj s, SampleMappingConsumer.Models.DestinationObj d):
-                    d.SourceObjId = s.Id;
-                    d.SourceObjType = s.Type;
+                case (AutomapGenerator.Generator.VerificationTests.CreateMap.Sources.FullSourceObj s, AutomapGenerator.Generator.VerificationTests.CreateMap.Sources.DestinationWithSrcPrefix d):
+                    d.FullSourceObjId = s.Id;
+                    d.FullSourceObjType = s.Type;
                     d.Timestamp = s.Timestamp;
                     d.InUse = s.InUse;
                     break;
@@ -31,9 +31,9 @@ namespace AutomapGenerator
             var destInstance = new TDestination();
             switch (source, destInstance)
             {
-                case (global::System.Linq.IQueryable<SampleMappingConsumer.Models.SourceObj> s, SampleMappingConsumer.Models.DestinationObj):
-                    return global::System.Linq.Queryable.Cast<TDestination>(global::System.Linq.Queryable.Select(s, src => new SampleMappingConsumer.Models.DestinationObj()
-                    {SourceObjId = src.Id, SourceObjType = src.Type, Timestamp = src.Timestamp, InUse = src.InUse}));
+                case (global::System.Linq.IQueryable<AutomapGenerator.Generator.VerificationTests.CreateMap.Sources.FullSourceObj> s, AutomapGenerator.Generator.VerificationTests.CreateMap.Sources.DestinationWithSrcPrefix):
+                    return global::System.Linq.Queryable.Cast<TDestination>(global::System.Linq.Queryable.Select(s, src => new AutomapGenerator.Generator.VerificationTests.CreateMap.Sources.DestinationWithSrcPrefix()
+                    {FullSourceObjId = src.Id, FullSourceObjType = src.Type, Timestamp = src.Timestamp, InUse = src.InUse}));
                 default:
                     throw new MappingException($"Mapping from {source.GetType().Name} to {typeof(TDestination).Name} has not been configured.");
             }

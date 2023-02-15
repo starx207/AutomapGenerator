@@ -12,11 +12,11 @@ namespace AutomapGenerator
         {
             switch (source, destination)
             {
-                case (SampleMappingConsumer.Models.Source1Obj s, SampleMappingConsumer.Models.DestinationObj d):
+                case (AutomapGenerator.Generator.VerificationTests.CreateMap.Sources.SimpleSourceObj s, AutomapGenerator.Generator.VerificationTests.CreateMap.Sources.SimpleDestinationObj d):
                     d.Id = s.Id;
                     d.Type = s.Type;
                     break;
-                case (SampleMappingConsumer.Models.Source2Obj s, SampleMappingConsumer.Models.DestinationObj d):
+                case (AutomapGenerator.Generator.VerificationTests.CreateMap.Sources.OtherSimpleSourceObj s, AutomapGenerator.Generator.VerificationTests.CreateMap.Sources.SimpleDestinationObj d):
                     d.Id = s.Id;
                     d.Type = s.Type;
                     break;
@@ -33,11 +33,11 @@ namespace AutomapGenerator
             var destInstance = new TDestination();
             switch (source, destInstance)
             {
-                case (global::System.Linq.IQueryable<SampleMappingConsumer.Models.Source1Obj> s, SampleMappingConsumer.Models.DestinationObj):
-                    return global::System.Linq.Queryable.Cast<TDestination>(global::System.Linq.Queryable.Select(s, src => new SampleMappingConsumer.Models.DestinationObj()
+                case (global::System.Linq.IQueryable<AutomapGenerator.Generator.VerificationTests.CreateMap.Sources.SimpleSourceObj> s, AutomapGenerator.Generator.VerificationTests.CreateMap.Sources.SimpleDestinationObj):
+                    return global::System.Linq.Queryable.Cast<TDestination>(global::System.Linq.Queryable.Select(s, src => new AutomapGenerator.Generator.VerificationTests.CreateMap.Sources.SimpleDestinationObj()
                     {Id = src.Id, Type = src.Type}));
-                case (global::System.Linq.IQueryable<SampleMappingConsumer.Models.Source2Obj> s, SampleMappingConsumer.Models.DestinationObj):
-                    return global::System.Linq.Queryable.Cast<TDestination>(global::System.Linq.Queryable.Select(s, src => new SampleMappingConsumer.Models.DestinationObj()
+                case (global::System.Linq.IQueryable<AutomapGenerator.Generator.VerificationTests.CreateMap.Sources.OtherSimpleSourceObj> s, AutomapGenerator.Generator.VerificationTests.CreateMap.Sources.SimpleDestinationObj):
+                    return global::System.Linq.Queryable.Cast<TDestination>(global::System.Linq.Queryable.Select(s, src => new AutomapGenerator.Generator.VerificationTests.CreateMap.Sources.SimpleDestinationObj()
                     {Id = src.Id, Type = src.Type}));
                 default:
                     throw new MappingException($"Mapping from {source.GetType().Name} to {typeof(TDestination).Name} has not been configured.");
