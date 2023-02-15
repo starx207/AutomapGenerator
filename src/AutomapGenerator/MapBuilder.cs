@@ -7,7 +7,7 @@ public class MapBuilder<TSource, TDestination> {
     }
 
     public MapBuilder<TSource, TDestination> ForMember<TProperty>(
-        Expression<Func<TSource, TProperty>> destinationMember,
+        Expression<Func<TDestination, TProperty>> destinationMember,
         Expression<Action<MemberMapConfiguration<TSource, TProperty>>> mapConfiguration
     ) => this;
 }
