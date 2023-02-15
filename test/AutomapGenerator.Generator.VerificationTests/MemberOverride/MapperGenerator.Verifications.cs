@@ -4,7 +4,7 @@ namespace AutomapGenerator.Generator.VerificationTests.MemberOverride;
 
 [UsesVerify]
 public class MapperGenerator_Verifications {
-    private const string SNAPSHOT_LOCATION = @"Snapshots\MemberOverride";
+    private const string SNAPSHOT_LOCATION = @"MemberOverride\Snapshots";
 
     #region Tests
 

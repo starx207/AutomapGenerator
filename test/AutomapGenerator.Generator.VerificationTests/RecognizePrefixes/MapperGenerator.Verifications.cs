@@ -4,7 +4,7 @@ namespace AutomapGenerator.Generator.VerificationTests.RecognizePrefixes;
 
 [UsesVerify]
 public class MapperGenerator_Verifications {
-    private const string SNAPSHOT_LOCATION = @"Snapshots\RecognizePrefixes";
+    private const string SNAPSHOT_LOCATION = @"RecognizePrefixes\Snapshots";
 
     #region Tests
 

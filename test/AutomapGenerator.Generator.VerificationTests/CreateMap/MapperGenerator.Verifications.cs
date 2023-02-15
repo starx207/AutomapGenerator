@@ -4,7 +4,7 @@ namespace AutomapGenerator.Generator.VerificationTests.CreateMap;
 
 [UsesVerify]
 public class MapperGenerator_Verifications {
-    private const string SNAPSHOT_LOCATION = @"Snapshots\CreateMap";
+    private const string SNAPSHOT_LOCATION = @"CreateMap\Snapshots";
 
     #region Tests
 

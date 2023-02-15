@@ -4,7 +4,7 @@ namespace AutomapGenerator.Generator.VerificationTests.CreateProjection;
 
 [UsesVerify]
 public class MapperGenerator_Verifications {
-    private const string SNAPSHOT_LOCATION = @"Snapshots\CreateProjection";
+    private const string SNAPSHOT_LOCATION = @"CreateProjection\Snapshots";
 
     #region Tests
 
