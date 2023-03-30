@@ -26,6 +26,11 @@ internal static class MapDefinitionHelper {
                     definition.RecognizedSourcePrefixes.AddRange(prefixes);
                     continue;
                 }
+
+                if (TryExtractRecognizedDestinationPrefixes(invocation, compilation, token, out prefixes)) {
+                    definition.RecognizedDestinationPrefixes.AddRange(prefixes);
+                    continue;
+                }
             }
 
             if (definition.Mappings.Any()) {
@@ -38,9 +43,15 @@ internal static class MapDefinitionHelper {
         return allDefinitions;
     }
 
-    private static bool TryExtractRecognizedSourcePrefixes(InvocationExpressionSyntax node, Compilation compilation, CancellationToken token, out string[] prefixes) {
+    private static bool TryExtractRecognizedSourcePrefixes(InvocationExpressionSyntax node, Compilation compilation, CancellationToken token, out string[] prefixes) 
+        => TryExtractRecognizedPrefixes("RecognizePrefixes", node, compilation, token, out prefixes);
+
+    private static bool TryExtractRecognizedDestinationPrefixes(InvocationExpressionSyntax node, Compilation compilation, CancellationToken token, out string[] prefixes)
+        => TryExtractRecognizedPrefixes("RecognizeDestinationPrefixes", node, compilation, token, out prefixes);
+
+    private static bool TryExtractRecognizedPrefixes(string methodName, InvocationExpressionSyntax node, Compilation compilation, CancellationToken token, out string[] prefixes) {
         prefixes = Array.Empty<string>();
-        if (!TryExtractMapProfileMethodInvocation(node, compilation, token, "RecognizePrefixes", out var _, out var _)) {
+        if (!TryExtractMapProfileMethodInvocation(node, compilation, token, methodName, out var _, out var _)) {
             return false;
         }
 

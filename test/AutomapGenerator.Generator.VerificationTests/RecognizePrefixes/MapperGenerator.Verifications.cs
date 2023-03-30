@@ -14,12 +14,21 @@ public class MapperGenerator_Verifications {
     }, SNAPSHOT_LOCATION);
 
     [Fact]
+    public Task RecognizePrefixesOnTheDestination() => Verifier.Verify(new[] {
+        SourceReader.GetSourceFor<Sources.DestinationWithMultiplePrefixes>(),
+        SourceReader.GetSourceFor<Sources.UnprefixedObject>(),
+        SourceReader.GetSourceFor<Sources.ProfileForDestinationWithMultiplePrefixes>()
+    }, SNAPSHOT_LOCATION);
+
+    [Fact]
     public Task KeepRecognizedPrefixesScopedToAProfile() => Verifier.Verify(new[] {
         SourceReader.GetSourceFor<Sources.SourceWithSinglePrefix>(),
         SourceReader.GetSourceFor<Sources.OtherSourceWithSinglePrefix>(),
         SourceReader.GetSourceFor<Sources.UnprefixedObject>(),
+        SourceReader.GetSourceFor<Sources.DestinationWithSinglePrefix>(),
         SourceReader.GetSourceFor<Sources.ProfileForSourceWithSinglePrefix>(),
-        SourceReader.GetSourceFor<Sources.ProfileWithoutRecognizedPrefixes>()
+        SourceReader.GetSourceFor<Sources.ProfileWithoutRecognizedPrefixes>(),
+        SourceReader.GetSourceFor<Sources.ProfileForDestinationWithSinglePrefix>()
     }, SNAPSHOT_LOCATION);
 
     [Fact]

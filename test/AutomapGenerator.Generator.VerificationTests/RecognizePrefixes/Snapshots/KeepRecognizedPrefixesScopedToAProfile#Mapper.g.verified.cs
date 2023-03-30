@@ -20,6 +20,10 @@ namespace AutomapGenerator
                     break;
                 case (AutomapGenerator.Generator.VerificationTests.RecognizePrefixes.Sources.OtherSourceWithSinglePrefix s, AutomapGenerator.Generator.VerificationTests.RecognizePrefixes.Sources.UnprefixedObject d):
                     break;
+                case (AutomapGenerator.Generator.VerificationTests.RecognizePrefixes.Sources.UnprefixedObject s, AutomapGenerator.Generator.VerificationTests.RecognizePrefixes.Sources.DestinationWithSinglePrefix d):
+                    d.DtoId = s.Id;
+                    d.DtoType = s.Type;
+                    break;
                 default:
                     throw new MappingException($"Mapping from {source.GetType().Name} to {typeof(TDestination).Name} has not been configured.");
             }
@@ -39,6 +43,9 @@ namespace AutomapGenerator
                 case (global::System.Linq.IQueryable<AutomapGenerator.Generator.VerificationTests.RecognizePrefixes.Sources.OtherSourceWithSinglePrefix> s, AutomapGenerator.Generator.VerificationTests.RecognizePrefixes.Sources.UnprefixedObject):
                     return global::System.Linq.Queryable.Cast<TDestination>(global::System.Linq.Queryable.Select(s, src => new AutomapGenerator.Generator.VerificationTests.RecognizePrefixes.Sources.UnprefixedObject()
                     {}));
+                case (global::System.Linq.IQueryable<AutomapGenerator.Generator.VerificationTests.RecognizePrefixes.Sources.UnprefixedObject> s, AutomapGenerator.Generator.VerificationTests.RecognizePrefixes.Sources.DestinationWithSinglePrefix):
+                    return global::System.Linq.Queryable.Cast<TDestination>(global::System.Linq.Queryable.Select(s, src => new AutomapGenerator.Generator.VerificationTests.RecognizePrefixes.Sources.DestinationWithSinglePrefix()
+                    {DtoId = src.Id, DtoType = src.Type}));
                 default:
                     throw new MappingException($"Mapping from {source.GetType().Name} to {typeof(TDestination).Name} has not been configured.");
             }

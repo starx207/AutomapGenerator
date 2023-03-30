@@ -9,6 +9,7 @@ internal class MapDefinition {
     public ClassDeclarationSyntax ClassDeclaration { get; }
     public List<Mapping> Mappings { get; } = new();
     public List<string> RecognizedSourcePrefixes { get; } = new();
+    public List<string> RecognizedDestinationPrefixes { get; } = new();
 
     public MapDefinition(ClassDeclarationSyntax declaration) => ClassDeclaration = declaration;
 
@@ -23,19 +24,41 @@ internal class MapDefinition {
             if (mapping.TryGetExplicitMapping(ref mappings, destPropName)) {
                 continue;
             }
-            // Match the name exactly as-is
-            if (mapping.TryAddMatching(ref mappings, destPropName, p => p.Name == destPropName)) {
+
+            var mapped = false;
+            for (var j = 0; j < RecognizedDestinationPrefixes.Count + 1; j++) {
+                mapped = true;
+
+                // First time through, we try with no prefix. Then we try again with each prefix
+                var unprefixedDestPropName = destPropName;
+                if (j > 0) {
+                    var prefix = RecognizedDestinationPrefixes[j - 1];
+                    if (!unprefixedDestPropName.StartsWith(prefix)) {
+                        mapped = false; // Just in case this is our last loop iteration.
+                        continue;
+                    }
+                    unprefixedDestPropName = unprefixedDestPropName.Substring(prefix.Length);
+                }
+                
+                // Match the name exactly as-is
+                if (mapping.TryAddMatching(ref mappings, destPropName, p => p.Name == unprefixedDestPropName)) {
+                    break;
+                }
+                // Match the name with the Source type-name as a prefix
+                if (mapping.TryAddMatching(ref mappings, destPropName, p => p.ContainingType.Name + p.Name == unprefixedDestPropName)) {
+                    break;
+                }
+                // Match the name with one of the recoginzed source prefixes
+                if (mapping.TryAddMatching(ref mappings, destPropName, p => RecognizedSourcePrefixes.Any(prefix => p.Name == prefix + unprefixedDestPropName))) {
+                    break;
+                }
+                mapped = false;
+            }
+
+            if (mapped) {
                 continue;
             }
-            // Match the name with the Source type-name as a prefix
-            if (mapping.TryAddMatching(ref mappings, destPropName, p => p.ContainingType.Name + p.Name == destPropName)) {
-                continue;
-            }
-            // Match the name with one of the recoginzed source prefixes
-            if (mapping.TryAddMatching(ref mappings, destPropName, p => RecognizedSourcePrefixes.Any(prefix => p.Name == prefix + destPropName))) {
-                continue;
-            }
-            if (mapping.TryAddFlattened(ref mappings, destPropName, RecognizedSourcePrefixes)) {
+            if (mapping.TryAddFlattened(ref mappings, destPropName, RecognizedSourcePrefixes, RecognizedDestinationPrefixes)) {
                 continue;
             }
         }
@@ -67,10 +90,17 @@ internal class MapDefinition {
             return false;
         }
 
-        public bool TryAddFlattened(ref List<(string, string)> mappings, string destPropName, IEnumerable<string> recognizedSourcePrefixes) {
+        public bool TryAddFlattened(ref List<(string, string)> mappings, string destPropName, IEnumerable<string> recognizedSourcePrefixes, List<string> recognizedDestinationPrefixes) {
             var nameParts = SplitNameByConvention(destPropName);
             var sourcePrefixPaths = recognizedSourcePrefixes.Select(SplitNameByConvention).ToArray();
             var matchedPath = FindPropertyPath(SourceProperties, nameParts, sourcePrefixPaths);
+            var i = 0;
+
+            while ((matchedPath is null) && i < recognizedDestinationPrefixes.Count) {
+                nameParts = SplitNameByConvention(recognizedDestinationPrefixes[i] + destPropName);
+                matchedPath = FindPropertyPath(SourceProperties, nameParts, sourcePrefixPaths);
+            }
+
             if (matchedPath is not null) {
                 mappings.Add((destPropName, matchedPath));
                 return true;
