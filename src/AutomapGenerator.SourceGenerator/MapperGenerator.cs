@@ -25,10 +25,7 @@ public class MapperGenerator : IIncrementalGenerator {
     private static void Execute(IEnumerable<MapDefinition> defs, SourceProductionContext spc) {
         if (defs.Any()) {
             var mapperOutput = MapGenHelper.CreateMapperClass(defs.ToArray());
-            var interfaceOutput = MapGenHelper.CreateMapperInterface();
-
             spc.AddSource("Mapper.g.cs", mapperOutput.GetText(Encoding.UTF8));
-            spc.AddSource("IMapper.g.cs", interfaceOutput.GetText(Encoding.UTF8));
         }
     }
 
