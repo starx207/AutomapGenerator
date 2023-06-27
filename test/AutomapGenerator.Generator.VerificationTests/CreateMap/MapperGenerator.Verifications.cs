@@ -30,10 +30,10 @@ public class MapperGenerator_Verifications {
     }, SNAPSHOT_LOCATION);
 
     [Fact]
-    public Task MapperWithEmptyConstructor() => Verifier.Verify(SourceReader.GetSourceFor<Sources.EmptyConstructorProfile>(), SNAPSHOT_LOCATION);
+    public Task MapperWithEmptyConstructor() => Verifier.Verify(SourceReader.GetSourceFor<Sources.EmptyConstructorProfile>(), SNAPSHOT_LOCATION, expectNoOutput: true);
 
     [Fact]
-    public Task MapperWithNoConstructor() => Verifier.Verify(SourceReader.GetSourceFor<Sources.NoConstructorProfile>(), SNAPSHOT_LOCATION);
+    public Task MapperWithNoConstructor() => Verifier.Verify(SourceReader.GetSourceFor<Sources.NoConstructorProfile>(), SNAPSHOT_LOCATION, expectNoOutput: true);
 
     [Fact]
     public Task SimpleObjectMap_WithArrowFunction() => Verifier.Verify(new[] {

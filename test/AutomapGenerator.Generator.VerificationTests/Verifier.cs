@@ -17,9 +17,9 @@ internal static class Verifier {
             MetadataReference.CreateFromFile(typeof(MapProfile).Assembly.Location)
         };
 
-    public static Task Verify(string source, string directory, [CallerMemberName] string? testName = null) => Verify(new[] { source }, directory, testName);
+    public static Task Verify(string source, string directory, bool expectNoOutput = false, [CallerMemberName] string? testName = null) => Verify(new[] { source }, directory, expectNoOutput, testName);
 
-    public static Task Verify(IEnumerable<string> sources, string directory, [CallerMemberName] string? testName = null) {
+    public static Task Verify(IEnumerable<string> sources, string directory, bool expectNoOutput = false, [CallerMemberName] string? testName = null) {
         var syntaxTrees = sources.Select(s => CSharpSyntaxTree.ParseText(s)).ToArray();
 
         var compilation = CSharpCompilation.Create(
@@ -32,8 +32,12 @@ internal static class Verifier {
 
         driver = driver.RunGenerators(compilation);
 
-        return XUnitVerifier.Verify(driver)
+        var task = XUnitVerifier.Verify(driver)
             .UseDirectory(directory)
-            .UseFileName(testName!);
+            .UseFileName(testName!)
+            .ToTask();
+        return expectNoOutput
+            ? task
+            : task.ContinueWith(t => Assert.True(t.Result.TextFiles.Any(), "No files output"));
     }
 }
