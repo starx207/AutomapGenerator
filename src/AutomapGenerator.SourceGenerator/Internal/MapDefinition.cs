@@ -5,13 +5,9 @@ using Microsoft.CodeAnalysis.CSharp.Syntax;
 namespace AutomapGenerator.SourceGenerator.Internal;
 
 internal class MapDefinition {
-    // TODO: Remove this if I don't end up using it. Or simplify to just keep the parts of it that I need
-    public ClassDeclarationSyntax ClassDeclaration { get; }
     public List<Mapping> Mappings { get; } = new();
     public List<string> RecognizedSourcePrefixes { get; } = new();
     public List<string> RecognizedDestinationPrefixes { get; } = new();
-
-    public MapDefinition(ClassDeclarationSyntax declaration) => ClassDeclaration = declaration;
 
     public List<(string destProp, string srcProp)> GetDestinationMappings(Mapping mapping) {
         var mappings = new List<(string, string)>();

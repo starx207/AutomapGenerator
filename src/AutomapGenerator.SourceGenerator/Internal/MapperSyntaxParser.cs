@@ -57,4 +57,15 @@ internal static class MapperSyntaxParser {
         return null;
     }
 
+    public static InvocationExpressionSyntax? GetMapInvocation(GeneratorSyntaxContext context, CancellationToken token) {
+        var memberExpression = (InvocationExpressionSyntax)context.Node;
+        var accessingMemberExpression = (MemberAccessExpressionSyntax)memberExpression.Expression;
+
+        if (context.SemanticModel.GetTypeInfo(accessingMemberExpression.Expression, token).Type is not ITypeSymbol callerSymbol) {
+            throw new Exception("TODO: How did we get here???");
+        }
+        var callerFullName = callerSymbol.ToDisplayString();
+        // TODO: Reference the other project and get the type name here?
+        return callerFullName == "AutomapGenerator.IMapper" ? memberExpression : null;
+    }
 }

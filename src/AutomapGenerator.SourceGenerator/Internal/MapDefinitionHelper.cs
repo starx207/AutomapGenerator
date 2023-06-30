@@ -8,28 +8,129 @@ namespace AutomapGenerator.SourceGenerator.Internal;
 
 internal static class MapDefinitionHelper {
 
-    public static IEnumerable<MapDefinition> ConvertToMapDefinitions(Compilation compilation, ImmutableArray<(ClassDeclarationSyntax, InvocationExpressionSyntax[])> profiles, CancellationToken token) {
+    // TODO: What about when a profile defines projection only, but we call Map on the types?
+    public static IEnumerable<MapDefinition> CombineProfilesAndAdHocMappings(ImmutableArray<MapDefinition> profileMappings, ImmutableArray<MapDefinition> adHocMappings) {
+        var allMappings = new List<MapDefinition>(profileMappings);
+        for (var i = 0; i < adHocMappings.Length; i++) {
+            var adHocMapping = adHocMappings[i];
+            var indexesToRemove = new List<int>();
+            for (var j = 0; j < adHocMapping.Mappings.Count; j++) {
+                var mapping = adHocMapping.Mappings[j];
+                if (MappingAlreadyDefined(mapping, allMappings.SelectMany(m => m.Mappings).ToList())) {
+                    indexesToRemove.Add(j);
+                }
+            }
+            // Sort descending so we work from back of list (or we'll mess up indexing as we remove items)
+            indexesToRemove.Sort((x, y) => y.CompareTo(x));
+            for (var j = 0; j < indexesToRemove.Count; j++) {
+                var index = indexesToRemove[j];
+                if (index < adHocMapping.Mappings.Count) {
+                    adHocMapping.Mappings.RemoveAt(index);
+                }
+            }
+            if (adHocMapping.Mappings.Count > 0) {
+                allMappings.Add(adHocMapping);
+            }
+        }
+
+        return allMappings;
+    }
+
+    public static IEnumerable<MapDefinition> PruneAdHocDefinitions(List<MapDefinition> adHocDefs) {
+        var pruned = new List<MapDefinition.Mapping>();
+        var projections = new List<MapDefinition.Mapping>();
+
+        // Split mappings into projections and maps
+        for (var i = 0; i < adHocDefs.Count; i++) {
+            for (var j = 0; j < adHocDefs[i].Mappings.Count; j++) {
+                var mapping = adHocDefs[i].Mappings[j];
+                if (mapping.ProjectionOnly) {
+                    projections.Add(mapping);
+                } else {
+                    if (!MappingAlreadyDefined(mapping, pruned)) {
+                        pruned.Add(mapping);
+                    }
+                }
+            }
+        }
+
+        // Add projections that are not already mapped
+        for (var i = 0; i < projections.Count; i++) {
+            var projection = projections[i];
+            var found = false;
+            for (var j = 0; j < pruned.Count; j++) {
+                var other = pruned[j];
+                if (projection.SourceName.Equals(other.SourceName) && projection.DestinationName.Equals(other.DestinationName)) {
+                    found = true;
+                    break;
+                }
+            }
+            if (!found) {
+                pruned.Add(projection);
+            }
+        }
+
+        var newDef = new MapDefinition();
+        newDef.Mappings.AddRange(pruned);
+        return new[] { newDef };
+    }
+
+    public static List<MapDefinition> ConvertToMapDefinitions(Compilation compilation, ImmutableArray<(SyntaxNode, InvocationExpressionSyntax[])> profiles, CancellationToken token) {
         var allDefinitions = new List<MapDefinition>();
 
         for (var i = 0; i < profiles.Length; i++) {
-            (var classSyntax, var invocations) = profiles[i];
-            var definition = new MapDefinition(classSyntax);
+            (var syntaxNode, var invocations) = profiles[i];
+            var definition = new MapDefinition();
+            var isAdHoc = syntaxNode is InvocationExpressionSyntax;
 
             for (var j = 0; j < invocations.Length; j++) {
                 var invocation = invocations[j];
-                if (TryExtractCreateMapOrProjectionInvocation(invocation, compilation, token, out var mapOrProjection)) {
-                    definition.Mappings.Add(ConvertToMapping(mapOrProjection, token));
-                    continue;
-                }
+                if (isAdHoc) {
+                    var semantic = compilation.GetSemanticModel(invocation.SyntaxTree);
+                    var srcSymbol = GetTypeSymbol(semantic, invocation.ArgumentList.Arguments[0].Expression, token);
+                    ITypeSymbol destSymbol;
 
-                if (TryExtractRecognizedSourcePrefixes(invocation, compilation, token, out var prefixes)) {
-                    definition.RecognizedSourcePrefixes.AddRange(prefixes);
-                    continue;
-                }
+                    var projection = false;
+                    if (TryExtractGenericName(invocation.Expression, 1, out var genericName)) {
+                        // Destination type is the 1st type argument
+                        destSymbol = GetTypeSymbol(semantic, genericName.TypeArgumentList.Arguments[0], token);
+                        if (genericName.Identifier.Text == "ProjectTo") {
+                            projection = true;
+                        }
+                    } else {
+                        // Destination type is the 2nd method argument
+                        destSymbol = GetTypeSymbol(semantic, invocation.ArgumentList.Arguments[1].Expression, token);
+                    }
 
-                if (TryExtractRecognizedDestinationPrefixes(invocation, compilation, token, out prefixes)) {
-                    definition.RecognizedDestinationPrefixes.AddRange(prefixes);
-                    continue;
+                    if (projection) {
+                        // The source is an IQueryable<T>. We need to get just the T
+                        srcSymbol = ((INamedTypeSymbol)srcSymbol).TypeArguments[0];
+                    }
+
+
+                    // Once we have the source type and destination type, we can create a map definition
+                    definition.Mappings.Add(new(
+                        srcSymbol.ToDisplayString(), 
+                        GetAllPropertySymbols(srcSymbol), 
+                        destSymbol.ToDisplayString(), 
+                        GetWritablePropertySymbols(destSymbol), 
+                        projection, 
+                        new()));
+                } else {
+                    if (TryExtractCreateMapOrProjectionInvocation(invocation, compilation, token, out var mapOrProjection)) {
+                        definition.Mappings.Add(ConvertToMapping(mapOrProjection, token));
+                        continue;
+                    }
+
+                    if (TryExtractRecognizedSourcePrefixes(invocation, compilation, token, out var prefixes)) {
+                        definition.RecognizedSourcePrefixes.AddRange(prefixes);
+                        continue;
+                    }
+
+                    if (TryExtractRecognizedDestinationPrefixes(invocation, compilation, token, out prefixes)) {
+                        definition.RecognizedDestinationPrefixes.AddRange(prefixes);
+                        continue;
+                    }
                 }
             }
 
@@ -41,6 +142,16 @@ internal static class MapDefinitionHelper {
         // TODO: Check for duplicate mapping definitions. Add a diagnostic if any are found
 
         return allDefinitions;
+    }
+
+    private static bool MappingAlreadyDefined(MapDefinition.Mapping mapping, List<MapDefinition.Mapping> allMappings) {
+        for (var i = 0; i < allMappings.Count; i++) {
+            var existingMapping = allMappings[i];
+            if (mapping.SourceName.Equals(existingMapping.SourceName) && mapping.DestinationName.Equals(existingMapping.DestinationName)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private static bool TryExtractRecognizedSourcePrefixes(InvocationExpressionSyntax node, Compilation compilation, CancellationToken token, out string[] prefixes) 
@@ -68,7 +179,7 @@ internal static class MapDefinitionHelper {
 
     private static bool TryExtractCreateMapOrProjectionInvocation(InvocationExpressionSyntax node, Compilation compilation, CancellationToken token, [NotNullWhen(true)] out MapOrProjectionInvocation? invocation) {
         invocation = null;
-        if (!TryExtractGenericName(node.Expression, out var genericName)) {
+        if (!TryExtractGenericName(node.Expression, 2, out var genericName)) {
             return false;
         }
 
@@ -190,7 +301,7 @@ internal static class MapDefinitionHelper {
         return true;
     }
 
-    private static ITypeSymbol GetTypeSymbol(SemanticModel semanticModel, TypeSyntax sourceType, CancellationToken token) 
+    private static ITypeSymbol GetTypeSymbol(SemanticModel semanticModel, ExpressionSyntax sourceType, CancellationToken token) 
         => semanticModel.GetTypeInfo(sourceType, token) is not { Type: ITypeSymbol sourceSymbol }
             ? throw new Exception("TODO: How did we get here??")
             : sourceSymbol;
@@ -221,13 +332,21 @@ internal static class MapDefinitionHelper {
         return ImmutableArray.CreateRange(sourceProperties);
     }
 
-    private static bool TryExtractGenericName(ExpressionSyntax expression, [NotNullWhen(true)] out GenericNameSyntax? genericName) {
+    private static bool TryExtractGenericName(ExpressionSyntax expression, int arity, [NotNullWhen(true)] out GenericNameSyntax? genericName) {
         while (expression is MemberAccessExpressionSyntax { Expression: InvocationExpressionSyntax invokeExpr }) {
             expression = invokeExpr.Expression;
         }
-        if (expression is GenericNameSyntax { TypeArgumentList.Arguments.Count: 2 } matchedName) {
-            genericName = matchedName;
-            return true;
+        if (expression is GenericNameSyntax { } matchedName) {
+            if (matchedName.TypeArgumentList.Arguments.Count == arity) {
+                genericName = matchedName;
+                return true;
+            }
+        }
+        if (expression is MemberAccessExpressionSyntax { Name: GenericNameSyntax { } matchedName2 }) {
+            if (matchedName2.TypeArgumentList.Arguments.Count == arity) {
+                genericName = matchedName2;
+                return true;
+            }
         }
         genericName = null;
         return false;
