@@ -93,8 +93,13 @@ internal class MapDefinition {
             var i = 0;
 
             while ((matchedPath is null) && i < recognizedDestinationPrefixes.Count) {
-                nameParts = SplitNameByConvention(recognizedDestinationPrefixes[i] + destPropName);
-                matchedPath = FindPropertyPath(SourceProperties, nameParts, sourcePrefixPaths);
+                if (nameParts[0] == recognizedDestinationPrefixes[i]) {
+                    matchedPath = FindPropertyPath(
+                        SourceProperties,
+                        new ArraySegment<string>(nameParts, 1, nameParts.Length - 1),
+                        sourcePrefixPaths);
+                }
+                i++;
             }
 
             if (matchedPath is not null) {
@@ -104,16 +109,23 @@ internal class MapDefinition {
             return false;
         }
 
-        private static string? FindPropertyPath(IEnumerable<IPropertySymbol> properties, string[] path, string[][] sourcePrefixPaths) {
+        private static string? FindPropertyPath(IEnumerable<IPropertySymbol> properties, string[] path, string[][] sourcePrefixPaths)
+            => FindPropertyPath(properties, new ArraySegment<string>(path), sourcePrefixPaths);
+        
+        private static string? FindPropertyPath(IEnumerable<IPropertySymbol> properties, ArraySegment<string> path, string[][] sourcePrefixPaths) {
             foreach (var property in properties) {
                 if (TryMatchProperty(property, path, sourcePrefixPaths, out var matchedLength)) {
-                    if (matchedLength == path.Length) {
+                    if (matchedLength == path.Count) {
                         return property.Name;
                     }
 
                     if (property.Type is INamedTypeSymbol nestedType) {
                         var nestedProperties = nestedType.GetMembers().OfType<IPropertySymbol>();
-                        var nestedPath = FindPropertyPath(nestedProperties, path.Skip(matchedLength).ToArray(), sourcePrefixPaths);
+                        var newOffset = path.Offset + matchedLength;
+                        var nestedPath = FindPropertyPath(
+                            nestedProperties,
+                            new ArraySegment<string>(path.Array, newOffset, path.Array.Length - newOffset),
+                            sourcePrefixPaths);
 
                         if (nestedPath is not null) {
                             return $"{property.Name}.{nestedPath}";
@@ -125,7 +137,7 @@ internal class MapDefinition {
             return null;
         }
 
-        private static bool TryMatchProperty(IPropertySymbol property, string[] path, string[][] sourcePrefixPaths, out int matchedLength) {
+        private static bool TryMatchProperty(IPropertySymbol property, ArraySegment<string> path, string[][] sourcePrefixPaths, out int matchedLength) {
             // See if the property name matches the path
             var propNameParts = SplitNameByConvention(property.Name);
             if (propNameParts.SequenceEqual(path.Take(propNameParts.Length))) {
