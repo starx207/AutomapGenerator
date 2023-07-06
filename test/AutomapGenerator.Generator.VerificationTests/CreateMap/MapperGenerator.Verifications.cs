@@ -50,6 +50,13 @@ public class MapperGenerator_Verifications {
     }, SNAPSHOT_LOCATION);
 
     [Fact]
+    public Task MapWithPrivateSetterDestinations() => Verifier.Verify(new[] {
+        SourceReader.GetSourceFor<Sources.FullSourceObj>(),
+        SourceReader.GetSourceFor<Sources.DestinationWithPrivateSetterProp>(),
+        SourceReader.GetSourceFor<Sources.MapWithPrivateSetterDestinationProfile>()
+    }, SNAPSHOT_LOCATION);
+
+    [Fact]
     public Task MapWithReadonlySources() => Verifier.Verify(new[] {
         SourceReader.GetSourceFor<Sources.SourceWithReadonlyProp>(),
         SourceReader.GetSourceFor<Sources.FullDestinationObj>(),

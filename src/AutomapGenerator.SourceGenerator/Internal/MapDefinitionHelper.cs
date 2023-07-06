@@ -112,8 +112,8 @@ internal static class MapDefinitionHelper {
                     definition.Mappings.Add(new(
                         srcSymbol.ToDisplayString(), 
                         GetAllPropertySymbols(srcSymbol), 
-                        destSymbol.ToDisplayString(), 
-                        GetWritablePropertySymbols(destSymbol), 
+                        destSymbol.ToDisplayString(),
+                        GetAllPropertySymbols(destSymbol, writableOnly: true), 
                         projection, 
                         new()));
                 } else {
@@ -219,7 +219,7 @@ internal static class MapDefinitionHelper {
         return new(sourceSymbol.ToDisplayString(),
             GetAllPropertySymbols(sourceSymbol),
             destinationSymbol.ToDisplayString(),
-            GetWritablePropertySymbols(destinationSymbol),
+            GetAllPropertySymbols(destinationSymbol, writableOnly: true),
             projectionOnly,
             GetCustomMappings(invocation.Origin));
     }
@@ -306,27 +306,23 @@ internal static class MapDefinitionHelper {
             ? throw new Exception("TODO: How did we get here??")
             : sourceSymbol;
 
-    private static ImmutableArray<IPropertySymbol> GetWritablePropertySymbols(ITypeSymbol destinationSymbol) {
-        var destProperties = new List<IPropertySymbol>();
-        var destMembers = destinationSymbol.GetMembers();
-        for (var i = 0; i < destMembers.Length; i++) {
-            var destMember = destMembers[i];
-            if (destMember is IPropertySymbol { IsReadOnly: false } destProp) {
-                destProperties.Add(destProp);
-            }
-        }
-
-        return ImmutableArray.CreateRange(destProperties);
-    }
-
-    private static ImmutableArray<IPropertySymbol> GetAllPropertySymbols(ITypeSymbol sourceSymbol) {
+    private static ImmutableArray<IPropertySymbol> GetAllPropertySymbols(ITypeSymbol? sourceSymbol, bool writableOnly = false) {
         var sourceProperties = new List<IPropertySymbol>();
-        var sourceMembers = sourceSymbol.GetMembers();
-        for (var i = 0; i < sourceMembers.Length; i++) {
-            var srcMember = sourceMembers[i];
-            if (srcMember is IPropertySymbol srcProp) {
-                sourceProperties.Add(srcProp);
+        var trackedPropNames = new List<string>(); // This is to keep track of the property names so we don't add a duplicate (if derived class hides base member)
+        while (sourceSymbol is not null) {
+            var sourceMembers = sourceSymbol.GetMembers();
+            for (var i = 0; i < sourceMembers.Length; i++) {
+                var srcMember = sourceMembers[i];
+                if (srcMember is IPropertySymbol srcProp && !trackedPropNames.Contains(srcProp.Name)) {
+                    trackedPropNames.Add(srcProp.Name);
+                    if (writableOnly && srcProp.SetMethod is not { DeclaredAccessibility: Accessibility.Public }) {
+                        continue;
+                    }
+                    sourceProperties.Add(srcProp);
+                }
             }
+
+            sourceSymbol = sourceSymbol.BaseType;
         }
 
         return ImmutableArray.CreateRange(sourceProperties);
