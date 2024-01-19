@@ -2,7 +2,7 @@
 
 [UsesVerify]
 public class MapperGenerator_Verifications {
-    private const string SNAPSHOT_LOCATION = @"CreateProjection\Snapshots";
+    private static readonly string _snapshotLocation = Path.Combine("CreateProjection", "Snapshots");
 
     #region Tests
 
@@ -11,7 +11,7 @@ public class MapperGenerator_Verifications {
         SourceReader.GetSourceFor<Sources.ProjectionSource>(),
         SourceReader.GetSourceFor<Sources.ProjectionDestination>(),
         SourceReader.GetSourceFor<Sources.ProjectionProfile>()
-    }, SNAPSHOT_LOCATION);
+    }, _snapshotLocation);
 
     #endregion
 }

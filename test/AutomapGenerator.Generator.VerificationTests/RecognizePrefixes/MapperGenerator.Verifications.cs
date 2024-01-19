@@ -2,7 +2,7 @@
 
 [UsesVerify]
 public class MapperGenerator_Verifications {
-    private const string SNAPSHOT_LOCATION = @"RecognizePrefixes\Snapshots";
+    private static readonly string _snapshotLocation = Path.Combine("RecognizePrefixes", "Snapshots");
 
     #region Tests
 
@@ -11,14 +11,14 @@ public class MapperGenerator_Verifications {
         SourceReader.GetSourceFor<Sources.SourceWithMultiplePrefixes>(),
         SourceReader.GetSourceFor<Sources.UnprefixedObject>(),
         SourceReader.GetSourceFor<Sources.ProfileForSourceWithMultiplePrefixes>()
-    }, SNAPSHOT_LOCATION);
+    }, _snapshotLocation);
 
     [Fact]
     public Task RecognizePrefixesOnTheDestination() => Verifier.Verify(new[] {
         SourceReader.GetSourceFor<Sources.DestinationWithMultiplePrefixes>(),
         SourceReader.GetSourceFor<Sources.UnprefixedObject>(),
         SourceReader.GetSourceFor<Sources.ProfileForDestinationWithMultiplePrefixes>()
-    }, SNAPSHOT_LOCATION);
+    }, _snapshotLocation);
 
     [Fact]
     public Task KeepRecognizedPrefixesScopedToAProfile() => Verifier.Verify(new[] {
@@ -29,7 +29,7 @@ public class MapperGenerator_Verifications {
         SourceReader.GetSourceFor<Sources.ProfileForSourceWithSinglePrefix>(),
         SourceReader.GetSourceFor<Sources.ProfileWithoutRecognizedPrefixes>(),
         SourceReader.GetSourceFor<Sources.ProfileForDestinationWithSinglePrefix>()
-    }, SNAPSHOT_LOCATION);
+    }, _snapshotLocation);
 
     [Fact]
     public Task RecognizePrefixesOnTheSource_WhenFlattening() => Verifier.Verify(new[] {
@@ -37,7 +37,7 @@ public class MapperGenerator_Verifications {
         SourceReader.GetSourceFor<Sources.SourceWithNestedObject>(),
         SourceReader.GetSourceFor<Sources.FlattenedDestination>(),
         SourceReader.GetSourceFor<Sources.PrefixedFlatMapperProfile>()
-    }, SNAPSHOT_LOCATION);
+    }, _snapshotLocation);
 
     #endregion
 }

@@ -2,7 +2,7 @@
 
 [UsesVerify]
 public class MapperGenerator_Verifications {
-    private const string SNAPSHOT_LOCATION = @"Inheritance\Snapshots";
+    private static readonly string _snapshotLocation = Path.Combine("Inheritance", "Snapshots");
 
     #region Tests
 
@@ -12,7 +12,7 @@ public class MapperGenerator_Verifications {
         SourceReader.GetSourceFor<Sources.DerivedSource>(),
         SourceReader.GetSourceFor<Sources.Destination>(),
         SourceReader.GetSourceFor<Sources.DerivedSourceProfile>()
-    }, SNAPSHOT_LOCATION);
+    }, _snapshotLocation);
 
     [Fact]
     public Task MappingToADestinationWithInheritedBase() => Verifier.Verify(new[] {
@@ -20,7 +20,7 @@ public class MapperGenerator_Verifications {
         SourceReader.GetSourceFor<Sources.Source>(),
         SourceReader.GetSourceFor<Sources.DerivedDestination>(),
         SourceReader.GetSourceFor<Sources.DerivedDestinationProfile>()
-    }, SNAPSHOT_LOCATION);
+    }, _snapshotLocation);
 
     [Fact]
     public Task MappingSourceAndDestinationWithInheritedBases() => Verifier.Verify(new[] {
@@ -28,7 +28,7 @@ public class MapperGenerator_Verifications {
         SourceReader.GetSourceFor<Sources.DerivedSource>(),
         SourceReader.GetSourceFor<Sources.DerivedDestination>(),
         SourceReader.GetSourceFor<Sources.AllDerivedProfile>()
-    }, SNAPSHOT_LOCATION);
+    }, _snapshotLocation);
 
     #endregion
 }

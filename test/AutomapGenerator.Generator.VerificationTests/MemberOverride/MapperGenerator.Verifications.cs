@@ -2,7 +2,7 @@
 
 [UsesVerify]
 public class MapperGenerator_Verifications {
-    private const string SNAPSHOT_LOCATION = @"MemberOverride\Snapshots";
+    private static readonly string _snapshotLocation = Path.Combine("MemberOverride", "Snapshots");
 
     #region Tests
 
@@ -11,21 +11,21 @@ public class MapperGenerator_Verifications {
         SourceReader.GetSourceFor<Sources.SimpleSourceObj>(),
         SourceReader.GetSourceFor<Sources.SimpleDestinationObj>(),
         SourceReader.GetSourceFor<Sources.IgnorePropertyProfile>()
-    }, SNAPSHOT_LOCATION);
+    }, _snapshotLocation);
 
     [Fact]
     public Task MultipleIgnoredProperties() => Verifier.Verify(new[] {
         SourceReader.GetSourceFor<Sources.FullSourceObj>(),
         SourceReader.GetSourceFor<Sources.FullDestinationObj>(),
         SourceReader.GetSourceFor<Sources.IgnoreMultiplePropsProfile>()
-    }, SNAPSHOT_LOCATION);
+    }, _snapshotLocation);
 
     [Fact]
     public Task ExplicitMemberMapping() => Verifier.Verify(new[] {
         SourceReader.GetSourceFor<Sources.FullSourceObj>(),
         SourceReader.GetSourceFor<Sources.DestinationThatBreaksNamingConvention>(),
         SourceReader.GetSourceFor<Sources.MapExplicitlyProfile>()
-    }, SNAPSHOT_LOCATION);
+    }, _snapshotLocation);
 
     #endregion
 }
