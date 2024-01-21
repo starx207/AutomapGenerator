@@ -1,30 +1,25 @@
-﻿using AutomapGenerator.FunctionalTests.Models;
+﻿using AutoFixture;
+using AutoFixture.AutoNSubstitute;
+using AutomapGenerator.FunctionalTests.Models;
 using FluentAssertions.Execution;
-using Microsoft.AspNetCore.Http;
-using Moq.AutoMock;
+using NSubstitute;
 
 namespace AutomapGenerator.FunctionalTests;
 
 public class MappingUseCases {
     private readonly IMapper _mapper;
-    private readonly AutoMocker _mocker;
+    private readonly Fixture _mocker;
 
     public MappingUseCases() {
+        _mocker = new Fixture();
+        _mocker.Customize(new AutoNSubstituteCustomization());
         _mapper = new Mapper();
-        _mocker = new AutoMocker();
     }
 
     [Fact]
     public void NewDocumentInput_To_CreateDocumentCommand() {
-        // Arrange
-        _mocker.Use<IFormFile>(x => x.Name == "NewFile.html");
-        var source = new NewDocumentInput() {
-            DocDate = DateTime.Parse("5/2/2020"),
-            DocType = "official mail",
-            Keywords = new[] { "searchable", "keywords" },
-            Format = "HTML",
-            File = _mocker.Get<IFormFile>()
-        };
+        var source = _mocker.Create<NewDocumentInput>();
+        source.File!.Name.Returns(_mocker.Create<string>());
 
         // Act
         var destination = _mapper.Map<CreateDocumentCommand>(source);
@@ -43,22 +38,7 @@ public class MappingUseCases {
     [Fact]
     public void DocMetaData_To_DocSearchViewModel() {
         // Arrange
-        var source = new DocMetaData() {
-            Id = Guid.NewGuid(),
-            DocTitle = "My Document",
-            CreateUser = new() { UserName = "joe user" },
-            DocDate = DateTime.Parse("8/18/1800"),
-            TimeStamp = DateTime.Parse("9/24/1901"),
-            DocDateTypeIdx = 34,
-            DeleteDate = DateTime.Parse("9/30/2030"),
-            Bcs = (long?)90.431,
-            DocLen = 729,
-            InstanceNameId = null,
-            DateTimeAddedToMaster = DateTime.Parse("9/9/2099"),
-            CreateDate = DateTime.Parse("10/10/2010"),
-            ChangeDate = DateTime.Parse("10/11/2020"),
-            Type = new() { Code = "test", SortIndex = 40 }
-        };
+        var source = _mocker.Create<DocMetaData>();
 
         // Act
         var destination = _mapper.Map<DocSearchViewModel>(source);
@@ -67,13 +47,13 @@ public class MappingUseCases {
         using (new AssertionScope()) {
             destination.Id.Should().Be(source.Id);
             destination.DocTitle.Should().Be(source.DocTitle);
-            destination.Creator.Should().Be(source.CreateUser.UserName);
+            destination.Creator.Should().Be(source.CreateUser!.UserName);
             destination.CreateDate.Should().Be(source.CreateDate);
             destination.ChangeDate.Should().Be(source.ChangeDate);
             destination.DocDeleteDate.Should().Be(source.DeleteDate);
             destination.DocDate.Should().Be(source.DocDate);
             destination.Length.Should().Be(source.DocLen);
-            destination.Type.Should().Be(source.Type.Code);
+            destination.Type.Should().Be(source.Type!.Code);
             destination.SortIndex.Should().Be(source.Type.SortIndex);
         }
     }
@@ -81,9 +61,10 @@ public class MappingUseCases {
     [Fact]
     public void DocMetaData_To_DocSearchViewModel_WithNullFallbacks() {
         // Arrange
-        var source = new DocMetaData() {
-            DocUser = "joe user",
-        };
+        var source = _mocker.Build<DocMetaData>()
+            .Without(x => x.CreateUser)
+            .Without(x => x.Type)
+            .Create();
 
         // Act
         var destination = _mapper.Map<DocSearchViewModel>(source);
@@ -99,18 +80,14 @@ public class MappingUseCases {
     [Fact]
     public void DocMetaData_To_DocumentDownloadViewModel() {
         // Arrange
-        var source = new DocMetaData() {
-            Type = new() { Code = "PDF" },
-            DocTitle = "Cool_title",
-            DocContent = new() { DocBinary = new byte[] { 9, 34, 23, 62 } }
-        };
+        var source = _mocker.Create<DocMetaData>();
 
         // Act
         var destination = _mapper.Map<DocumentDownloadViewModel>(source);
 
         // Assert
         using (new AssertionScope()) {
-            destination.FileFormat.Should().Be(source.Type.Code);
+            destination.FileFormat.Should().Be(source.Type!.Code);
             destination.FileName.Should().Be($"{source.DocTitle}.{source.Type.Code.ToLower()}");
             destination.Content.Should().BeEquivalentTo(source.DocContent.DocBinary, opt => opt.WithStrictOrdering());
         }
@@ -119,10 +96,9 @@ public class MappingUseCases {
     [Fact]
     public void DocMetaData_To_DocumentDownloadViewModel_WithNullFallbacks() {
         // Arrange
-        var source = new DocMetaData() {
-            Type = null,
-            DocTitle = "Cool_title"
-        };
+        var source = _mocker.Build<DocMetaData>()
+            .Without(x => x.Type)
+            .Create();
 
         // Act
         var destination = _mapper.Map<DocumentDownloadViewModel>(source);
@@ -137,14 +113,7 @@ public class MappingUseCases {
     [Fact]
     public void DocMetaData_To_ModifyDocPatch() {
         // Arrange
-        var source = new DocMetaData() {
-            DocTitle = "super_cool_title",
-            DocDate = DateTime.Parse("11/1/2023"),
-            Keywords = new List<Keyword>() {
-                new("word1"),
-                new("word2")
-            }
-        };
+        var source = _mocker.Create<DocMetaData>();
 
         // Act
         var destination = _mapper.Map<ModifyDocPatch>(source);
@@ -162,10 +131,7 @@ public class MappingUseCases {
     [Fact]
     public void DocMetaData_To_MoveDocPatch() {
         // Arrange
-        var source = new DocMetaData() {
-            DocTitle = "some_title",
-            Type = new() { Code = "my_code" }
-        };
+        var source = _mocker.Create<DocMetaData>();
 
         // Act
         var destination = _mapper.Map<MoveDocPatch>(source);
@@ -173,16 +139,16 @@ public class MappingUseCases {
         // Assert
         using (new AssertionScope()) {
             destination.NewDocTitle.Should().Be(source.DocTitle);
-            destination.NewTypeCode.Should().Be(source.Type.Code);
+            destination.NewTypeCode.Should().Be(source.Type!.Code);
         }
     }
 
     [Fact]
     public void DocMetaData_To_MoveDocPatch_WithNullFallbacks() {
         // Arrange
-        var source = new DocMetaData() {
-            Type = null
-        };
+        var source = _mocker.Build<DocMetaData>()
+            .Without(x => x.Type)
+            .Create();
 
         // Act
         var destination = _mapper.Map<MoveDocPatch>(source);
