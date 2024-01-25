@@ -12,9 +12,11 @@ namespace AutomapGenerator
         {
             switch (source, destination)
             {
-                case (AutomapGenerator.Generator.VerificationTests.RecognizePrefixes.Sources.SourceWithNestedObject s, AutomapGenerator.Generator.VerificationTests.RecognizePrefixes.Sources.FlattenedDestination d):
-                    d.ChildDescription = s.TestChild?.TestDescription;
-                    d.ChildOtherProp = s.TestChild?.OtherProp;
+                case (AutomapGenerator.Generator.VerificationTests.NullFallbacks.Sources.SourceObj s, DestinationObjFromNested d):
+                    d.ChildObjValue = s.ChildObj?.Value ?? "something else";
+                    d.NonNullString = s.ChildObj?.Value ?? "my default";
+                    d.ChildObjOtherValue = s.ChildObj?.OtherValue ?? s.OtherNullableString;
+                    d.NullableString = s.ChildObj?.OtherValue ?? s.ChildObj?.Value;
                     break;
                 default:
                     throw new MappingException($"Mapping from {source.GetType().Name} to {typeof(TDestination).Name} has not been configured.");
@@ -29,9 +31,9 @@ namespace AutomapGenerator
             var destInstance = new TDestination();
             switch (source, destInstance)
             {
-                case (global::System.Linq.IQueryable<AutomapGenerator.Generator.VerificationTests.RecognizePrefixes.Sources.SourceWithNestedObject> s, AutomapGenerator.Generator.VerificationTests.RecognizePrefixes.Sources.FlattenedDestination):
-                    return global::System.Linq.Queryable.Cast<TDestination>(global::System.Linq.Queryable.Select(s, src => new AutomapGenerator.Generator.VerificationTests.RecognizePrefixes.Sources.FlattenedDestination()
-                    {ChildDescription = src.TestChild != null ? src.TestChild.TestDescription : null, ChildOtherProp = src.TestChild != null ? src.TestChild.OtherProp : null}));
+                case (global::System.Linq.IQueryable<AutomapGenerator.Generator.VerificationTests.NullFallbacks.Sources.SourceObj> s, DestinationObjFromNested):
+                    return global::System.Linq.Queryable.Cast<TDestination>(global::System.Linq.Queryable.Select(s, src => new DestinationObjFromNested()
+                    {ChildObjValue = src.ChildObj != null && src.ChildObj.Value != null ? src.ChildObj.Value : "something else", NonNullString = src.ChildObj != null && src.ChildObj.Value != null ? src.ChildObj.Value : "my default", ChildObjOtherValue = src.ChildObj != null && src.ChildObj.OtherValue != null ? src.ChildObj.OtherValue : src.OtherNullableString, NullableString = src.ChildObj != null && src.ChildObj.OtherValue != null ? src.ChildObj.OtherValue : (src.ChildObj != null ? src.ChildObj.Value : null)}));
                 default:
                     throw new MappingException($"Mapping from {source.GetType().Name} to {typeof(TDestination).Name} has not been configured.");
             }

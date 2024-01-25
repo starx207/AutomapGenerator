@@ -12,9 +12,8 @@ namespace AutomapGenerator
         {
             switch (source, destination)
             {
-                case (AutomapGenerator.Generator.VerificationTests.RecognizePrefixes.Sources.SourceWithNestedObject s, AutomapGenerator.Generator.VerificationTests.RecognizePrefixes.Sources.FlattenedDestination d):
-                    d.ChildDescription = s.TestChild?.TestDescription;
-                    d.ChildOtherProp = s.TestChild?.OtherProp;
+                case (AutomapGenerator.Generator.VerificationTests.CreateMap.Sources.SourceObjWithDeepNesting s, AutomapGenerator.Generator.VerificationTests.CreateMap.Sources.DestinationFromDeepNestedSrc d):
+                    d.Level1Level2Description = s.Level1?.Level2?.Description;
                     break;
                 default:
                     throw new MappingException($"Mapping from {source.GetType().Name} to {typeof(TDestination).Name} has not been configured.");
@@ -29,9 +28,9 @@ namespace AutomapGenerator
             var destInstance = new TDestination();
             switch (source, destInstance)
             {
-                case (global::System.Linq.IQueryable<AutomapGenerator.Generator.VerificationTests.RecognizePrefixes.Sources.SourceWithNestedObject> s, AutomapGenerator.Generator.VerificationTests.RecognizePrefixes.Sources.FlattenedDestination):
-                    return global::System.Linq.Queryable.Cast<TDestination>(global::System.Linq.Queryable.Select(s, src => new AutomapGenerator.Generator.VerificationTests.RecognizePrefixes.Sources.FlattenedDestination()
-                    {ChildDescription = src.TestChild != null ? src.TestChild.TestDescription : null, ChildOtherProp = src.TestChild != null ? src.TestChild.OtherProp : null}));
+                case (global::System.Linq.IQueryable<AutomapGenerator.Generator.VerificationTests.CreateMap.Sources.SourceObjWithDeepNesting> s, AutomapGenerator.Generator.VerificationTests.CreateMap.Sources.DestinationFromDeepNestedSrc):
+                    return global::System.Linq.Queryable.Cast<TDestination>(global::System.Linq.Queryable.Select(s, src => new AutomapGenerator.Generator.VerificationTests.CreateMap.Sources.DestinationFromDeepNestedSrc()
+                    {Level1Level2Description = src.Level1 != null && src.Level1.Level2 != null ? src.Level1.Level2.Description : null}));
                 default:
                     throw new MappingException($"Mapping from {source.GetType().Name} to {typeof(TDestination).Name} has not been configured.");
             }

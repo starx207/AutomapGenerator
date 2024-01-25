@@ -14,11 +14,11 @@ namespace AutomapGenerator
             {
                 case (AutomapGenerator.Generator.VerificationTests.CreateMap.Sources.SourceObjWithNesting s, AutomapGenerator.Generator.VerificationTests.CreateMap.Sources.DestinationFromNestedSrc d):
                     d.Id = s.Id;
-                    d.ChildObjDescription = s.ChildObj.Description;
-                    d.ChildObjOtherProp = s.ChildObj.OtherProp;
-                    d.SourceObjWithNestingChildObjDescription = s.ChildObj.Description;
-                    d.ChildObjNestedSourceOtherProp = s.ChildObj.OtherProp;
-                    d.NestedSourceDescription = s.NestedSource.Description;
+                    d.ChildObjDescription = s.ChildObj?.Description;
+                    d.ChildObjOtherProp = s.ChildObj?.OtherProp;
+                    d.SourceObjWithNestingChildObjDescription = s.ChildObj?.Description;
+                    d.ChildObjNestedSourceOtherProp = s.ChildObj?.OtherProp;
+                    d.NestedSourceDescription = s.NestedSource?.Description;
                     break;
                 default:
                     throw new MappingException($"Mapping from {source.GetType().Name} to {typeof(TDestination).Name} has not been configured.");
@@ -35,7 +35,7 @@ namespace AutomapGenerator
             {
                 case (global::System.Linq.IQueryable<AutomapGenerator.Generator.VerificationTests.CreateMap.Sources.SourceObjWithNesting> s, AutomapGenerator.Generator.VerificationTests.CreateMap.Sources.DestinationFromNestedSrc):
                     return global::System.Linq.Queryable.Cast<TDestination>(global::System.Linq.Queryable.Select(s, src => new AutomapGenerator.Generator.VerificationTests.CreateMap.Sources.DestinationFromNestedSrc()
-                    {Id = src.Id, ChildObjDescription = src.ChildObj.Description, ChildObjOtherProp = src.ChildObj.OtherProp, SourceObjWithNestingChildObjDescription = src.ChildObj.Description, ChildObjNestedSourceOtherProp = src.ChildObj.OtherProp, NestedSourceDescription = src.NestedSource.Description}));
+                    {Id = src.Id, ChildObjDescription = src.ChildObj != null ? src.ChildObj.Description : null, ChildObjOtherProp = src.ChildObj != null ? src.ChildObj.OtherProp : null, SourceObjWithNestingChildObjDescription = src.ChildObj != null ? src.ChildObj.Description : null, ChildObjNestedSourceOtherProp = src.ChildObj != null ? src.ChildObj.OtherProp : null, NestedSourceDescription = src.NestedSource != null ? src.NestedSource.Description : null}));
                 default:
                     throw new MappingException($"Mapping from {source.GetType().Name} to {typeof(TDestination).Name} has not been configured.");
             }

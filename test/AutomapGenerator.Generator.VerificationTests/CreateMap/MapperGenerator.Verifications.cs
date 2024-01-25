@@ -78,5 +78,14 @@ public class MapperGenerator_Verifications {
         SourceReader.GetSourceFor<Sources.FlatteningProfile>()
     }, _snapshotLocation);
 
+    [Fact]
+    public Task MapWithSourceObjectDeepFlattening() => Verifier.Verify(new[] {
+        SourceReader.GetSourceFor<Sources.NestedSource>(),
+        SourceReader.GetSourceFor<Sources.DeepNestedSource>(),
+        SourceReader.GetSourceFor<Sources.SourceObjWithDeepNesting>(),
+        SourceReader.GetSourceFor<Sources.DestinationFromDeepNestedSrc>(),
+        SourceReader.GetSourceFor<Sources.DeepFlatteningProfile>()
+    }, _snapshotLocation);
+
     #endregion
 }

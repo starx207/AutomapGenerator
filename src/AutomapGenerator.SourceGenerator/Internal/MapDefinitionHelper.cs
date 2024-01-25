@@ -276,7 +276,7 @@ internal static class MapDefinitionHelper {
 
     private static bool TryGetExplicitMapping(InvocationExpressionSyntax mapFromInvocation, [NotNullWhen(true)] out char[]? mapping) {
         if (mapFromInvocation.ArgumentList.Arguments[0].Expression is not SimpleLambdaExpressionSyntax lambdaExpr) {
-        mapping = null;
+            mapping = null;
             return false;
         }
 
