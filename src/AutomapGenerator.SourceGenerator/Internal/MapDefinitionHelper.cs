@@ -290,7 +290,11 @@ internal static class MapDefinitionHelper {
         var srcExpression = lambdaExpr.Body as MemberAccessExpressionSyntax;
         while (srcExpression is not null) {
             srcMemberChain.Insert(0, srcExpression.Name.Identifier.Text);
-            srcExpression = srcExpression.Expression as MemberAccessExpressionSyntax;
+            srcExpression = (
+                srcExpression.Expression is PostfixUnaryExpressionSyntax postUnaryExpression && postUnaryExpression.IsKind(SyntaxKind.SuppressNullableWarningExpression)
+                ? postUnaryExpression.Operand
+                : srcExpression.Expression
+            ) as MemberAccessExpressionSyntax;
         }
 
         if (srcMemberChain.Count == 0) {

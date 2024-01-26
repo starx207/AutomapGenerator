@@ -68,8 +68,12 @@ internal class MapDefinition {
 
         public bool TryGetExplicitMapping(ref List<(string, string)> mappings, string destPropName) {
             if (CustomMappings.TryGetValue(destPropName, out var customMapping) && customMapping.ExplicitMapping.Length > 0) {
-                mappings.Add((destPropName, new string(customMapping.ExplicitMapping)));
-                return true;
+                var nameParts = SplitNameByConvention(customMapping.ExplicitMapping);// new string(customMapping.ExplicitMapping).Split('.');
+                var matchedPath = FindPropertyPath(SourceProperties, nameParts);
+                if (matchedPath is not null) {
+                    mappings.Add((destPropName, matchedPath));
+                    return true;
+                }
             }
             return false;
         }
@@ -109,6 +113,9 @@ internal class MapDefinition {
             return false;
         }
 
+        private static string? FindPropertyPath(IEnumerable<IPropertySymbol> properties, string[] path)
+            => FindPropertyPath(properties, new ArraySegment<string>(path), Array.Empty<string[]>());
+
         private static string? FindPropertyPath(IEnumerable<IPropertySymbol> properties, string[] path, string[][] sourcePrefixPaths)
             => FindPropertyPath(properties, new ArraySegment<string>(path), sourcePrefixPaths);
 
@@ -126,11 +133,12 @@ internal class MapDefinition {
                             nestedProperties,
                             new ArraySegment<string>(path.Array, newOffset, path.Array.Length - newOffset),
                             sourcePrefixPaths);
-
-                        var separator = nestedType.NullableAnnotation == NullableAnnotation.Annotated
-                            ? "?." : ".";
-
+                        
                         if (nestedPath is not null) {
+                            var lastSection = nestedPath.Split('.', '?')[0];
+                            var separator = nestedType.NullableAnnotation == NullableAnnotation.Annotated // Annotated as nullable
+                                && ((!nestedType.IsValueType) || (lastSection != "HasValue" && lastSection != "Value")) // Is reference type, or nullable value type and not accessing the "Value" or "HasValue" property
+                                ? "?." : ".";
                             return property.Name + separator + nestedPath;
                         }
                     }
@@ -176,14 +184,17 @@ internal class MapDefinition {
             return false;
         }
 
-        private static string[] SplitNameByConvention(string name) {
+        private static string[] SplitNameByConvention(string name) => SplitNameByConvention(name.AsSpan());
+
+        private static string[] SplitNameByConvention(ReadOnlySpan<char> name) {
             var output = new List<string>();
             var currentWord = new char[name.Length];
             var j = 0;
 
             for (var i = 0; i < name.Length; i++) {
                 if (char.IsUpper(name[i]) && i != 0) {
-                    output.Add(new string(currentWord, 0, j));
+                    var offset = currentWord[j - 1] == '.' ? -1 : 0; // Don't include trailing "." (can happen when splitting an explicit mapping)
+                    output.Add(new string(currentWord, 0, j + offset));
                     j = 0;
                 }
                 currentWord[j++] = name[i];
