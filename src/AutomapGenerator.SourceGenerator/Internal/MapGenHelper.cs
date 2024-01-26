@@ -291,14 +291,61 @@ internal static class MapGenHelper {
                 expressions.Add(Token(SyntaxKind.CommaToken));
             }
 
+            var nullableParts = srcProp.Split(new[] { "?." }, StringSplitOptions.None);
+            ExpressionSyntax expressionRight;
+
+            expressionRight = MemberAccessExpression(
+                SyntaxKind.SimpleMemberAccessExpression,
+                IdentifierName(lambdaVarName),
+                IdentifierName(string.Join(".", nullableParts))
+            );
+            if (nullableParts.Length > 1) {
+                var binaryExpressions = new List<ExpressionSyntax>();
+
+                // Do not consume the last nullable part as it is the final value
+                // TODO: We do need to test it if a null fallback has been defined
+                var nullCheckIdentifier = string.Empty;
+                for (var j = 0; j < nullableParts.Length - 1; j++) {
+                    if (nullCheckIdentifier.Length > 0) {
+                        nullCheckIdentifier += ".";
+                    }
+                    nullCheckIdentifier += nullableParts[j];
+
+                    binaryExpressions.Add(BinaryExpression(
+                        SyntaxKind.NotEqualsExpression,
+                        MemberAccessExpression(
+                            SyntaxKind.SimpleMemberAccessExpression,
+                            IdentifierName(lambdaVarName),
+                            IdentifierName(nullCheckIdentifier)
+                        ),
+                        LiteralExpression(SyntaxKind.NullLiteralExpression)
+                    ));
+                }
+
+                // Process the binary expressions in the reverse order in order to build them up correctly
+                ExpressionSyntax condition = null!;
+                for (var j = binaryExpressions.Count - 1; j >= 0; j--) {
+                    condition = condition is null
+                        ? binaryExpressions[j]
+                        : BinaryExpression(
+                            SyntaxKind.LogicalAndExpression,
+                            binaryExpressions[j],
+                            condition
+                        );
+                }
+
+                expressionRight = ConditionalExpression(
+                    condition,
+                    expressionRight,
+                    LiteralExpression(SyntaxKind.NullLiteralExpression)
+                );
+            }
+
             expressions.Add(
                 AssignmentExpression(
                     SyntaxKind.SimpleAssignmentExpression,
                     IdentifierName(destProp),
-                    MemberAccessExpression(
-                        SyntaxKind.SimpleMemberAccessExpression,
-                        IdentifierName(lambdaVarName),
-                        IdentifierName(srcProp))));
+                    expressionRight));
         }
 
         return SwitchSection()

@@ -35,7 +35,7 @@ internal class MapDefinition {
                     }
                     unprefixedDestPropName = unprefixedDestPropName.Substring(prefix.Length);
                 }
-                
+
                 // Match the name exactly as-is
                 if (mapping.TryAddMatching(ref mappings, destPropName, p => p.Name == unprefixedDestPropName)) {
                     break;
@@ -111,7 +111,7 @@ internal class MapDefinition {
 
         private static string? FindPropertyPath(IEnumerable<IPropertySymbol> properties, string[] path, string[][] sourcePrefixPaths)
             => FindPropertyPath(properties, new ArraySegment<string>(path), sourcePrefixPaths);
-        
+
         private static string? FindPropertyPath(IEnumerable<IPropertySymbol> properties, ArraySegment<string> path, string[][] sourcePrefixPaths) {
             foreach (var property in properties) {
                 if (TryMatchProperty(property, path, sourcePrefixPaths, out var matchedLength)) {
@@ -127,8 +127,11 @@ internal class MapDefinition {
                             new ArraySegment<string>(path.Array, newOffset, path.Array.Length - newOffset),
                             sourcePrefixPaths);
 
+                        var separator = nestedType.NullableAnnotation == NullableAnnotation.Annotated
+                            ? "?." : ".";
+
                         if (nestedPath is not null) {
-                            return $"{property.Name}.{nestedPath}";
+                            return property.Name + separator + nestedPath;
                         }
                     }
                 }
