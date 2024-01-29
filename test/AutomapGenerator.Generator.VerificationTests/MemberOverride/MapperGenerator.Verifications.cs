@@ -1,6 +1,5 @@
 ﻿namespace AutomapGenerator.Generator.VerificationTests.MemberOverride;
 
-[UsesVerify]
 public class MapperGenerator_Verifications {
     private static readonly string _snapshotLocation = Path.Combine("MemberOverride", "Snapshots");
 

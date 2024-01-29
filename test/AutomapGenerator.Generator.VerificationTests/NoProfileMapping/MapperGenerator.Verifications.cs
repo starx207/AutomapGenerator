@@ -1,6 +1,5 @@
 ﻿namespace AutomapGenerator.Generator.VerificationTests.NoProfileMapping;
 
-[UsesVerify]
 public class MapperGenerator_Verifications {
     private static readonly string _snapshotLocation = Path.Combine("NoProfileMapping", "Snapshots");
 

@@ -31,8 +31,7 @@ namespace AutomapGenerator
             switch (source, destInstance)
             {
                 case (global::System.Linq.IQueryable<AutomapGenerator.Generator.VerificationTests.CreateMap.Sources.SourceObjWithDeepNesting> s, AutomapGenerator.Generator.VerificationTests.CreateMap.Sources.DestinationFromDeepNestedSrc):
-                    return global::System.Linq.Queryable.Cast<TDestination>(global::System.Linq.Queryable.Select(s, src => new AutomapGenerator.Generator.VerificationTests.CreateMap.Sources.DestinationFromDeepNestedSrc()
-                    {Level1Level2Description = src.Level1 != null && src.Level1.Level2 != null ? src.Level1.Level2.Description : null, ExplicitlyMappedValue = src.Level1 != null && src.Level1.Level2 != null ? src.Level1.Level2.Description : null, OtherExplicitValue = src.Level1 != null && src.Level1.Level2 != null ? src.Level1.Level2.Description : null}));
+                    return global::System.Linq.Queryable.Cast<TDestination>(global::System.Linq.Queryable.Select(s, src => new AutomapGenerator.Generator.VerificationTests.CreateMap.Sources.DestinationFromDeepNestedSrc() { Level1Level2Description = src.Level1 != null && src.Level1.Level2 != null ? src.Level1.Level2.Description : null, ExplicitlyMappedValue = src.Level1 != null && src.Level1.Level2 != null ? src.Level1.Level2.Description : null, OtherExplicitValue = src.Level1 != null && src.Level1.Level2 != null ? src.Level1.Level2.Description : null }));
                 default:
                     throw new MappingException($"Mapping from {source.GetType().Name} to {typeof(TDestination).Name} has not been configured.");
             }

@@ -32,8 +32,7 @@ namespace AutomapGenerator
             switch (source, destInstance)
             {
                 case (global::System.Linq.IQueryable<AutomapGenerator.Generator.VerificationTests.NullFallbacks.Sources.SourceObj> s, DestinationObjFromNested):
-                    return global::System.Linq.Queryable.Cast<TDestination>(global::System.Linq.Queryable.Select(s, src => new DestinationObjFromNested()
-                    {ChildObjValue = src.ChildObj != null && src.ChildObj.Value != null ? src.ChildObj.Value : "something else", NonNullString = src.ChildObj != null && src.ChildObj.Value != null ? src.ChildObj.Value : "my default", ChildObjOtherValue = src.ChildObj != null && src.ChildObj.OtherValue != null ? src.ChildObj.OtherValue : src.OtherNullableString, NullableString = src.ChildObj != null && src.ChildObj.OtherValue != null ? src.ChildObj.OtherValue : (src.ChildObj != null ? src.ChildObj.Value : null)}));
+                    return global::System.Linq.Queryable.Cast<TDestination>(global::System.Linq.Queryable.Select(s, src => new DestinationObjFromNested() { ChildObjValue = src.ChildObj != null && src.ChildObj.Value != null ? src.ChildObj.Value : "something else", NonNullString = src.ChildObj != null && src.ChildObj.Value != null ? src.ChildObj.Value : "my default", ChildObjOtherValue = src.ChildObj != null && src.ChildObj.OtherValue != null ? src.ChildObj.OtherValue : src.OtherNullableString, NullableString = src.ChildObj != null && src.ChildObj.OtherValue != null ? src.ChildObj.OtherValue : (src.ChildObj != null ? src.ChildObj.Value : null) }));
                 default:
                     throw new MappingException($"Mapping from {source.GetType().Name} to {typeof(TDestination).Name} has not been configured.");
             }

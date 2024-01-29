@@ -37,11 +37,9 @@ namespace AutomapGenerator
             switch (source, destInstance)
             {
                 case (global::System.Linq.IQueryable<SampleMappingConsumer.Models.SourceObj> s, SampleMappingConsumer.Models.DestinationObj):
-                    return global::System.Linq.Queryable.Cast<TDestination>(global::System.Linq.Queryable.Select(s, src => new SampleMappingConsumer.Models.DestinationObj()
-                    {Id = src.Id, Type = src.Type, Timestamp = src.Timestamp, InUse = src.InUse}));
+                    return global::System.Linq.Queryable.Cast<TDestination>(global::System.Linq.Queryable.Select(s, src => new SampleMappingConsumer.Models.DestinationObj() { Id = src.Id, Type = src.Type, Timestamp = src.Timestamp, InUse = src.InUse }));
                 case (global::System.Linq.IQueryable<SampleMappingConsumer.Models.DestinationObj> s, SampleMappingConsumer.Models.SourceObj):
-                    return global::System.Linq.Queryable.Cast<TDestination>(global::System.Linq.Queryable.Select(s, src => new SampleMappingConsumer.Models.SourceObj()
-                    {Id = src.Id, Type = src.Type, Timestamp = src.Timestamp, InUse = src.InUse}));
+                    return global::System.Linq.Queryable.Cast<TDestination>(global::System.Linq.Queryable.Select(s, src => new SampleMappingConsumer.Models.SourceObj() { Id = src.Id, Type = src.Type, Timestamp = src.Timestamp, InUse = src.InUse }));
                 default:
                     throw new MappingException($"Mapping from {source.GetType().Name} to {typeof(TDestination).Name} has not been configured.");
             }

@@ -26,8 +26,7 @@ namespace AutomapGenerator
             switch (source, destInstance)
             {
                 case (global::System.Linq.IQueryable<AutomapGenerator.Generator.VerificationTests.NoProfileMapping.Sources.SourceObj> s, AutomapGenerator.Generator.VerificationTests.NoProfileMapping.Sources.DestinationObj):
-                    return global::System.Linq.Queryable.Cast<TDestination>(global::System.Linq.Queryable.Select(s, src => new AutomapGenerator.Generator.VerificationTests.NoProfileMapping.Sources.DestinationObj()
-                    {Id = src.Id, Description = src.Description}));
+                    return global::System.Linq.Queryable.Cast<TDestination>(global::System.Linq.Queryable.Select(s, src => new AutomapGenerator.Generator.VerificationTests.NoProfileMapping.Sources.DestinationObj() { Id = src.Id, Description = src.Description }));
                 default:
                     throw new MappingException($"Mapping from {source.GetType().Name} to {typeof(TDestination).Name} has not been configured.");
             }
