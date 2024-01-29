@@ -29,5 +29,12 @@ public class MapperGenerator_Verifications {
         SourceReader.GetSourceFor<Sources.ProfileWithFallbackForNested>()
     }, _snapshotLocation);
 
+    [Fact]
+    public Task MappingNullVsNonNull_RefAndValueTypes() => Verifier.Verify(new[] {
+        SourceReader.GetSourceFor<Sources.DestinationForNullableValueTypes>(),
+        SourceReader.GetSourceFor<Sources.SourceWithNullableValueTypes>(),
+        SourceReader.GetSourceFor<Sources.ProfileWithNullableValueTypes>()
+    }, _snapshotLocation);
+
     #endregion
 }

@@ -28,3 +28,16 @@ public class MemberMapConfiguration<TSource, TProperty> {
 #endif
     public void NullFallback(Expression<Func<TSource, TProperty>> fallbackMapping) { }
 }
+
+public class NullableValueMemberMapConfiguration<TSource, TProperty> where TProperty : struct {
+    internal NullableValueMemberMapConfiguration() {
+    }
+
+#if NETSTANDARD2_1_OR_GREATER || NET6_0_OR_GREATER
+    public void MapFrom(Expression<Func<TSource, TProperty?>> sourceMapping, [DisallowNull] TProperty nullFallback) { }
+#else
+    public void MapFrom(Expression<Func<TSource, TProperty?>> sourceMapping, TProperty nullFallback) { }
+#endif
+
+    public void MapFrom(Expression<Func<TSource, TProperty?>> sourceMapping, Expression<Func<TSource, TProperty>> nullFallback) { }
+}
