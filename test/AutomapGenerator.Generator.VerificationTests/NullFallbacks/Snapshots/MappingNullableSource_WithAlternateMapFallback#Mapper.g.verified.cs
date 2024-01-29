@@ -30,7 +30,11 @@ namespace AutomapGenerator
             switch (source, destInstance)
             {
                 case (global::System.Linq.IQueryable<AutomapGenerator.Generator.VerificationTests.NullFallbacks.Sources.SourceObj> s, AutomapGenerator.Generator.VerificationTests.NullFallbacks.Sources.DestinationObj):
-                    return global::System.Linq.Queryable.Cast<TDestination>(global::System.Linq.Queryable.Select(s, src => new AutomapGenerator.Generator.VerificationTests.NullFallbacks.Sources.DestinationObj() { MappedString = src.NullableString != null ? src.NullableString : src.NonNullString, NullableMappedString = src.NullableString != null : src.NullableString : src.OtherNullableString }));
+                    return global::System.Linq.Queryable.Cast<TDestination>(global::System.Linq.Queryable.Select(s, src => new AutomapGenerator.Generator.VerificationTests.NullFallbacks.Sources.DestinationObj()
+                    {
+                        MappedString = src.NullableString != null ? src.NullableString : src.NonNullString,
+                        NullableMappedString = src.NullableString != null : src.NullableString : src.OtherNullableString
+                    }));
                 default:
                     throw new MappingException($"Mapping from {source.GetType().Name} to {typeof(TDestination).Name} has not been configured.");
             }

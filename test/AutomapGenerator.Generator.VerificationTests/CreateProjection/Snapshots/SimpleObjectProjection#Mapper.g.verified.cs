@@ -26,7 +26,13 @@ namespace AutomapGenerator
             switch (source, destInstance)
             {
                 case (global::System.Linq.IQueryable<AutomapGenerator.Generator.VerificationTests.CreateProjection.Sources.ProjectionSource> s, AutomapGenerator.Generator.VerificationTests.CreateProjection.Sources.ProjectionDestination):
-                    return global::System.Linq.Queryable.Cast<TDestination>(global::System.Linq.Queryable.Select(s, src => new AutomapGenerator.Generator.VerificationTests.CreateProjection.Sources.ProjectionDestination() { Id = src.Id, Type = src.Type, Timestamp = src.Timestamp, InUse = src.InUse }));
+                    return global::System.Linq.Queryable.Cast<TDestination>(global::System.Linq.Queryable.Select(s, src => new AutomapGenerator.Generator.VerificationTests.CreateProjection.Sources.ProjectionDestination()
+                    {
+                        Id = src.Id,
+                        Type = src.Type,
+                        Timestamp = src.Timestamp,
+                        InUse = src.InUse
+                    }));
                 default:
                     throw new MappingException($"Mapping from {source.GetType().Name} to {typeof(TDestination).Name} has not been configured.");
             }

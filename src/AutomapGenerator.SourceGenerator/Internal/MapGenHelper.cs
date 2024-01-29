@@ -415,7 +415,7 @@ internal static class MapGenHelper {
                 expressions.Add(Token(
                     TriviaList(),
                     SyntaxKind.CommaToken,
-                    TriviaList(Space)));
+                    TriviaList(CarriageReturnLineFeed)));
             }
 
             var nullableParts = srcProp.Split(new[] { "?." }, StringSplitOptions.None);
@@ -473,7 +473,9 @@ internal static class MapGenHelper {
             expressions.Add(
                 AssignmentExpression(
                     SyntaxKind.SimpleAssignmentExpression,
-                    IdentifierName(destProp).WithTrailingTrivia(Space),
+                    IdentifierName(destProp)
+                        .WithLeadingTrivia(Whitespace(indentation + INDENT + INDENT))
+                        .WithTrailingTrivia(Space),
                     expressionRight.WithLeadingTrivia(Space)));
         }
 
@@ -491,11 +493,11 @@ internal static class MapGenHelper {
                         SyntaxKind.ObjectInitializerExpression,
                         SeparatedList<ExpressionSyntax>(expressions))
                     .WithOpenBraceToken(Token(
-                        TriviaList(Space),
+                        TriviaList(CarriageReturnLineFeed, Whitespace(indentation + INDENT)),
                         SyntaxKind.OpenBraceToken,
-                        TriviaList(Space)))
+                        TriviaList(CarriageReturnLineFeed)))
                     .WithCloseBraceToken(Token(
-                        TriviaList(Space),
+                        TriviaList(CarriageReturnLineFeed, Whitespace(indentation + INDENT)),
                         SyntaxKind.CloseBraceToken,
                         TriviaList())));
         }

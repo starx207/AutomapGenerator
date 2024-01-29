@@ -29,7 +29,10 @@ namespace AutomapGenerator
             switch (source, destInstance)
             {
                 case (global::System.Linq.IQueryable<AutomapGenerator.Generator.VerificationTests.MemberOverride.Sources.SimpleSourceObj> s, AutomapGenerator.Generator.VerificationTests.MemberOverride.Sources.SimpleDestinationObj):
-                    return global::System.Linq.Queryable.Cast<TDestination>(global::System.Linq.Queryable.Select(s, src => new AutomapGenerator.Generator.VerificationTests.MemberOverride.Sources.SimpleDestinationObj() { Id = src.Id }));
+                    return global::System.Linq.Queryable.Cast<TDestination>(global::System.Linq.Queryable.Select(s, src => new AutomapGenerator.Generator.VerificationTests.MemberOverride.Sources.SimpleDestinationObj()
+                    {
+                        Id = src.Id
+                    }));
                 default:
                     throw new MappingException($"Mapping from {source.GetType().Name} to {typeof(TDestination).Name} has not been configured.");
             }
