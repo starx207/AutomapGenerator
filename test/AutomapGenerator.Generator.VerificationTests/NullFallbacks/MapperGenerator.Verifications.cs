@@ -25,7 +25,7 @@ public class MapperGenerator_Verifications {
     public Task MappingNestedSource_WithNullFallback() => Verifier.Verify(new[] {
         SourceReader.GetSourceFor<Sources.SourceObj>(),
         SourceReader.GetSourceFor<Sources.NestedSource>(),
-        SourceReader.GetSourceFor<Sources.DestinationObj>(),
+        SourceReader.GetSourceFor<Sources.DestinationObjFromNested>(),
         SourceReader.GetSourceFor<Sources.ProfileWithFallbackForNested>()
     }, _snapshotLocation);
 
