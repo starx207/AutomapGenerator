@@ -345,7 +345,26 @@ internal static class MapGenHelper {
         var expressions = new List<StatementSyntax>();
         var destMappings = definition.GetDestinationMappings(mapping);
         for (var i = 0; i < destMappings.Count; i++) {
-            (var destProp, var srcProp) = destMappings[i];
+            (var destProp, var srcProp, var fallback, var constFallback) = destMappings[i];
+
+            ExpressionSyntax srcExpr = MemberAccessExpression(
+                SyntaxKind.SimpleMemberAccessExpression,
+                IdentifierName(matchedSrcVarName).WithLeadingTrivia(Space),
+                IdentifierName(srcProp)
+            );
+            if (fallback is not null) {
+                srcExpr = BinaryExpression(
+                    SyntaxKind.CoalesceExpression,
+                    srcExpr.WithTrailingTrivia(Space),
+                    (constFallback
+                        ? IdentifierName(fallback)
+                        : (ExpressionSyntax)MemberAccessExpression(
+                            SyntaxKind.SimpleMemberAccessExpression,
+                            IdentifierName(matchedSrcVarName),
+                            IdentifierName(fallback)))
+                    .WithLeadingTrivia(Space)
+                );
+            }
 
             expressions.Add(ExpressionStatement(
                 AssignmentExpression(
@@ -354,10 +373,7 @@ internal static class MapGenHelper {
                         SyntaxKind.SimpleMemberAccessExpression,
                         IdentifierName(matchedDestVarName),
                         IdentifierName(destProp).WithTrailingTrivia(Space)),
-                    MemberAccessExpression(
-                        SyntaxKind.SimpleMemberAccessExpression,
-                        IdentifierName(matchedSrcVarName).WithLeadingTrivia(Space),
-                        IdentifierName(srcProp))))
+                    srcExpr))
                 .WithLeadingTrivia(Whitespace(indentation + INDENT))
                 .WithTrailingTrivia(CarriageReturnLineFeed));
         }
@@ -408,7 +424,7 @@ internal static class MapGenHelper {
         var expressions = new List<SyntaxNodeOrToken>();
         var destMappings = definition.GetDestinationMappings(mapping);
         for (var i = 0; i < destMappings.Count; i++) {
-            (var destProp, var srcProp) = destMappings[i];
+            (var destProp, var srcProp, var fallback, var constFallback) = destMappings[i];
 
             // Add a comma after the last expression before adding another
             if (expressions.Count > 0) {
@@ -418,57 +434,15 @@ internal static class MapGenHelper {
                     TriviaList(CarriageReturnLineFeed)));
             }
 
-            var nullableParts = srcProp.Split(new[] { "?." }, StringSplitOptions.None);
-            ExpressionSyntax expressionRight;
-
-            expressionRight = MemberAccessExpression(
-                SyntaxKind.SimpleMemberAccessExpression,
-                IdentifierName(lambdaVarName),
-                IdentifierName(string.Join(".", nullableParts))
-            );
-            if (nullableParts.Length > 1) {
-                var binaryExpressions = new List<ExpressionSyntax>();
-
-                // Do not consume the last nullable part as it is the final value
-                // TODO: We do need to test it if a null fallback has been defined
-                var nullCheckIdentifier = string.Empty;
-                for (var j = 0; j < nullableParts.Length - 1; j++) {
-                    if (nullCheckIdentifier.Length > 0) {
-                        nullCheckIdentifier += ".";
-                    }
-                    nullCheckIdentifier += nullableParts[j];
-
-                    binaryExpressions.Add(BinaryExpression(
-                        SyntaxKind.NotEqualsExpression,
-                        MemberAccessExpression(
-                            SyntaxKind.SimpleMemberAccessExpression,
-                            IdentifierName(lambdaVarName),
-                            IdentifierName(nullCheckIdentifier)
-                        ).WithTrailingTrivia(Space),
-                        LiteralExpression(SyntaxKind.NullLiteralExpression)
-                        .WithLeadingTrivia(Space)
-                    ));
-                }
-
-                // Process the binary expressions in the reverse order in order to build them up correctly
-                ExpressionSyntax condition = null!;
-                for (var j = binaryExpressions.Count - 1; j >= 0; j--) {
-                    condition = condition is null
-                        ? binaryExpressions[j]
-                        : BinaryExpression(
-                            SyntaxKind.LogicalAndExpression,
-                            binaryExpressions[j].WithTrailingTrivia(Space),
-                            condition.WithLeadingTrivia(Space)
-                        );
-                }
-
-                expressionRight = ConditionalExpression(
-                    condition.WithTrailingTrivia(Space),
-                    expressionRight.WithLeadingTrivia(Space).WithTrailingTrivia(Space),
-                    LiteralExpression(SyntaxKind.NullLiteralExpression)
-                    .WithLeadingTrivia(Space)
-                );
+            var srcNullableParts = srcProp.Split(new[] { "?." }, StringSplitOptions.None);
+            ExpressionSyntax? fallbackExpr = null;
+            if (fallback is not null) {
+                fallbackExpr = constFallback
+                    ? IdentifierName(fallback)
+                    : BuildLinqExpressionWithNullChecks(lambdaVarName, fallback.Split(new[] { "?." }, StringSplitOptions.None));
             }
+
+            var expressionRight = BuildLinqExpressionWithNullChecks(lambdaVarName, srcNullableParts, fallbackExpr);
 
             expressions.Add(
                 AssignmentExpression(
@@ -583,6 +557,71 @@ internal static class MapGenHelper {
                                                 }))))))))
                     .WithLeadingTrivia(Whitespace(indentation + INDENT))
                     .WithTrailingTrivia(CarriageReturnLineFeed)));
+    }
+
+    private static ExpressionSyntax BuildLinqExpressionWithNullChecks(string lambdaVarName, string[] nullableParts, ExpressionSyntax? nullFallback = null) {
+        var memberExpr = MemberAccessExpression(
+            SyntaxKind.SimpleMemberAccessExpression,
+            IdentifierName(lambdaVarName),
+            IdentifierName(string.Join(".", nullableParts))
+        );
+
+        if (nullFallback is ConditionalExpressionSyntax) {
+            nullFallback = ParenthesizedExpression(nullFallback);
+        }
+
+        if (nullableParts.Length <= 1) {
+            return nullFallback is not null
+                ? ConditionalExpression(BinaryExpression(
+                    SyntaxKind.NotEqualsExpression,
+                    memberExpr.WithTrailingTrivia(Space),
+                    LiteralExpression(SyntaxKind.NullLiteralExpression).WithLeadingTrivia(Space).WithTrailingTrivia(Space)),
+                    memberExpr.WithLeadingTrivia(Space).WithTrailingTrivia(Space),
+                    nullFallback.WithLeadingTrivia(Space))
+                : memberExpr;
+        }
+
+        var binaryExpressions = new List<ExpressionSyntax>();
+
+        // Do not consume the last nullable part as it is the final value
+        var nullCheckIdentifier = string.Empty;
+        var offset = nullFallback is null ? 1 : 0;
+        for (var i = 0; i < nullableParts.Length - offset; i++) {
+            if (nullCheckIdentifier.Length > 0) {
+                nullCheckIdentifier += ".";
+            }
+            nullCheckIdentifier += nullableParts[i];
+
+            binaryExpressions.Add(BinaryExpression(
+                SyntaxKind.NotEqualsExpression,
+                MemberAccessExpression(
+                    SyntaxKind.SimpleMemberAccessExpression,
+                    IdentifierName(lambdaVarName),
+                    IdentifierName(nullCheckIdentifier)
+                ).WithTrailingTrivia(Space),
+                LiteralExpression(SyntaxKind.NullLiteralExpression)
+                .WithLeadingTrivia(Space)
+            ));
+        }
+
+        // Process the binary expressions in the reverse order in order to build them up correctly
+        ExpressionSyntax condition = null!;
+        for (var i = binaryExpressions.Count - 1; i >= 0; i--) {
+            condition = condition is null
+                ? binaryExpressions[i]
+                : BinaryExpression(
+                    SyntaxKind.LogicalAndExpression,
+                    binaryExpressions[i].WithTrailingTrivia(Space),
+                    condition.WithLeadingTrivia(Space)
+                );
+        }
+
+        return ConditionalExpression(
+            condition.WithTrailingTrivia(Space),
+            memberExpr.WithLeadingTrivia(Space).WithTrailingTrivia(Space),
+            (nullFallback ?? LiteralExpression(SyntaxKind.NullLiteralExpression))
+            .WithLeadingTrivia(Space)
+        );
     }
 
     private static SwitchSectionSyntax CreateDefaultSwitchThrow(string sourceVarName, string indentation)

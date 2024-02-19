@@ -110,11 +110,11 @@ internal static class MapDefinitionHelper {
 
                     // Once we have the source type and destination type, we can create a map definition
                     definition.Mappings.Add(new(
-                        srcSymbol.ToDisplayString(), 
-                        GetAllPropertySymbols(srcSymbol), 
+                        srcSymbol.ToDisplayString(),
+                        GetAllPropertySymbols(srcSymbol),
                         destSymbol.ToDisplayString(),
-                        GetAllPropertySymbols(destSymbol, writableOnly: true), 
-                        projection, 
+                        GetAllPropertySymbols(destSymbol, writableOnly: true),
+                        projection,
                         new()));
                 } else {
                     if (TryExtractCreateMapOrProjectionInvocation(invocation, compilation, token, out var mapOrProjection)) {
@@ -154,7 +154,7 @@ internal static class MapDefinitionHelper {
         return false;
     }
 
-    private static bool TryExtractRecognizedSourcePrefixes(InvocationExpressionSyntax node, Compilation compilation, CancellationToken token, out string[] prefixes) 
+    private static bool TryExtractRecognizedSourcePrefixes(InvocationExpressionSyntax node, Compilation compilation, CancellationToken token, out string[] prefixes)
         => TryExtractRecognizedPrefixes("RecognizePrefixes", node, compilation, token, out prefixes);
 
     private static bool TryExtractRecognizedDestinationPrefixes(InvocationExpressionSyntax node, Compilation compilation, CancellationToken token, out string[] prefixes)
@@ -191,11 +191,11 @@ internal static class MapDefinitionHelper {
         return true;
     }
 
-    private static bool TryExtractMapProfileMethodInvocation(ExpressionSyntax expressionSyntax, Compilation compilation, CancellationToken token, string desiredMethod, 
+    private static bool TryExtractMapProfileMethodInvocation(ExpressionSyntax expressionSyntax, Compilation compilation, CancellationToken token, string desiredMethod,
         [NotNullWhen(true)] out SemanticModel? semanticModel, [NotNullWhen(true)] out IMethodSymbol? methodSymbol)
         => TryExtractMapProfileMethodInvocation(expressionSyntax, compilation, token, new[] { desiredMethod }, out semanticModel, out methodSymbol);
 
-    private static bool TryExtractMapProfileMethodInvocation(ExpressionSyntax expressionSyntax, Compilation compilation, CancellationToken token, string[] desiredMethods, 
+    private static bool TryExtractMapProfileMethodInvocation(ExpressionSyntax expressionSyntax, Compilation compilation, CancellationToken token, string[] desiredMethods,
         [NotNullWhen(true)] out SemanticModel? semanticModel, [NotNullWhen(true)] out IMethodSymbol? methodSymbol) {
 
         methodSymbol = null;
@@ -228,7 +228,7 @@ internal static class MapDefinitionHelper {
         var invocation = node;
         var customMappings = new Dictionary<string, MappingCustomization>();
 
-        while (invocation?.Expression is MemberAccessExpressionSyntax { Name.Identifier.Text: "ForMember"} memberExpr) {
+        while (invocation?.Expression is MemberAccessExpressionSyntax { Name.Identifier.Text: "ForMember" } memberExpr) {
             var args = invocation.ArgumentList.Arguments;
             invocation = memberExpr.Expression as InvocationExpressionSyntax;
 
@@ -245,8 +245,11 @@ internal static class MapDefinitionHelper {
 
             // Check if we have an explicit mapping
             if (TryGetMapFromInvocation(args[1].Expression, out var mapFromInvocation)) {
-                if (TryGetExplicitMapping(mapFromInvocation, out var explicitMapping)) {
-                    customMappings[destinationProp] = new MappingCustomization(explicitMapping: explicitMapping);
+                if (TryGetExplicitMapping(mapFromInvocation, out var explicitMapping, out var fallbackMapping, out var constFallback)) {
+                    customMappings[destinationProp] = new MappingCustomization(
+                        explicitMapping: explicitMapping,
+                        fallbackMapping: fallbackMapping,
+                        constFallback: constFallback);
                 }
                 continue;
             }
@@ -274,7 +277,9 @@ internal static class MapDefinitionHelper {
         return false;
     }
 
-    private static bool TryGetExplicitMapping(InvocationExpressionSyntax mapFromInvocation, [NotNullWhen(true)] out char[]? mapping) {
+    private static bool TryGetExplicitMapping(InvocationExpressionSyntax mapFromInvocation, [NotNullWhen(true)] out char[]? mapping, out char[]? fallbackMapping, out bool fallbackIsConstant) {
+        fallbackMapping = null;
+        fallbackIsConstant = true;
         if (mapFromInvocation.ArgumentList.Arguments[0].Expression is not SimpleLambdaExpressionSyntax lambdaExpr) {
             mapping = null;
             return false;
@@ -286,6 +291,29 @@ internal static class MapDefinitionHelper {
         //       parameter name.
         //mapping = lambdaExpr.Body.ToFullString();
 
+        if (GetSourceMemberPathFromLambda(lambdaExpr) is { Length: > 0 } path) {
+            mapping = path;
+        } else {
+            mapping = null;
+            return false;
+        }
+
+        if (mapFromInvocation.ArgumentList.Arguments.Count > 1) {
+            var nullFallbackArg = mapFromInvocation.ArgumentList.Arguments[1].Expression;
+            if (nullFallbackArg is LiteralExpressionSyntax literalFallbackExpr) {
+                fallbackMapping = literalFallbackExpr.Token.Text.ToCharArray();
+            } else if (nullFallbackArg is SimpleLambdaExpressionSyntax lambdaFallbackExpr) {
+                if (GetSourceMemberPathFromLambda(lambdaFallbackExpr) is { Length: > 0 } fallbackPath) {
+                    fallbackMapping = fallbackPath;
+                    fallbackIsConstant = false;
+                }
+            }
+        }
+
+        return true;
+    }
+
+    private static char[]? GetSourceMemberPathFromLambda(SimpleLambdaExpressionSyntax lambdaExpr) {
         var srcMemberChain = new List<string>();
         var srcExpression = lambdaExpr.Body as MemberAccessExpressionSyntax;
         while (srcExpression is not null) {
@@ -297,15 +325,12 @@ internal static class MapDefinitionHelper {
             ) as MemberAccessExpressionSyntax;
         }
 
-        if (srcMemberChain.Count == 0) {
-            mapping = null;
-            return false;
-        }
-        mapping = string.Join(".", srcMemberChain).ToCharArray();
-        return true;
+        return srcMemberChain.Count == 0
+            ? null
+            : string.Join(".", srcMemberChain).ToCharArray();
     }
 
-    private static ITypeSymbol GetTypeSymbol(SemanticModel semanticModel, ExpressionSyntax sourceType, CancellationToken token) 
+    private static ITypeSymbol GetTypeSymbol(SemanticModel semanticModel, ExpressionSyntax sourceType, CancellationToken token)
         => semanticModel.GetTypeInfo(sourceType, token) is not { Type: ITypeSymbol sourceSymbol }
             ? throw new Exception("TODO: How did we get here??")
             : sourceSymbol;

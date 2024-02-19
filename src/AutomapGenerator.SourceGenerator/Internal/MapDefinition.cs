@@ -1,6 +1,5 @@
 ﻿using System.Collections.Immutable;
 using Microsoft.CodeAnalysis;
-using Microsoft.CodeAnalysis.CSharp.Syntax;
 
 namespace AutomapGenerator.SourceGenerator.Internal;
 
@@ -9,8 +8,8 @@ internal class MapDefinition {
     public List<string> RecognizedSourcePrefixes { get; } = new();
     public List<string> RecognizedDestinationPrefixes { get; } = new();
 
-    public List<(string destProp, string srcProp)> GetDestinationMappings(Mapping mapping) {
-        var mappings = new List<(string, string)>();
+    public List<(string destProp, string srcProp, string? fallback, bool constFallback)> GetDestinationMappings(Mapping mapping) {
+        var mappings = new List<(string, string, string?, bool)>();
 
         for (var i = 0; i < mapping.WritableDestinationProperties.Length; i++) {
             var destPropName = mapping.WritableDestinationProperties[i].Name;
@@ -66,31 +65,44 @@ internal class MapDefinition {
         string DestinationName, ImmutableArray<IPropertySymbol> WritableDestinationProperties, bool ProjectionOnly,
         Dictionary<string, MappingCustomization> CustomMappings) {
 
-        public bool TryGetExplicitMapping(ref List<(string, string)> mappings, string destPropName) {
+        public bool TryGetExplicitMapping(ref List<(string, string, string?, bool)> mappings, string destPropName) {
             if (CustomMappings.TryGetValue(destPropName, out var customMapping) && customMapping.ExplicitMapping.Length > 0) {
-                var nameParts = SplitNameByConvention(customMapping.ExplicitMapping);// new string(customMapping.ExplicitMapping).Split('.');
+                var nameParts = SplitNameByConvention(customMapping.ExplicitMapping);
                 var matchedPath = FindPropertyPath(SourceProperties, nameParts);
                 if (matchedPath is not null) {
-                    mappings.Add((destPropName, matchedPath));
+                    var fallback = TryGetFallbackMapping(customMapping);
+                    mappings.Add((destPropName, matchedPath, fallback, customMapping.ConstFallback));
                     return true;
                 }
             }
             return false;
         }
 
+        private string? TryGetFallbackMapping(MappingCustomization customMapping) {
+            if (customMapping.FallbackMapping.Length == 0) {
+                return null;
+            }
+            if (customMapping.ConstFallback) {
+                return new string(customMapping.FallbackMapping);
+            } else {
+                var nameParts = SplitNameByConvention(customMapping.FallbackMapping);
+                return FindPropertyPath(SourceProperties, nameParts);
+            }
+        }
+
         public bool IsIgnored(string destPropName)
             => CustomMappings.TryGetValue(destPropName, out var mapping) && mapping.Ignore;
 
-        public bool TryAddMatching(ref List<(string, string)> mappings, string destPropName, Func<IPropertySymbol, bool> predicate) {
+        public bool TryAddMatching(ref List<(string, string, string?, bool)> mappings, string destPropName, Func<IPropertySymbol, bool> predicate) {
             var srcPropName = SourceProperties.SingleOrDefault(predicate)?.Name;
             if (srcPropName is not null) {
-                mappings.Add((destPropName, srcPropName));
+                mappings.Add((destPropName, srcPropName, null, false));
                 return true;
             }
             return false;
         }
 
-        public bool TryAddFlattened(ref List<(string, string)> mappings, string destPropName, IEnumerable<string> recognizedSourcePrefixes, List<string> recognizedDestinationPrefixes) {
+        public bool TryAddFlattened(ref List<(string, string, string?, bool)> mappings, string destPropName, IEnumerable<string> recognizedSourcePrefixes, List<string> recognizedDestinationPrefixes) {
             var nameParts = SplitNameByConvention(destPropName);
             var sourcePrefixPaths = recognizedSourcePrefixes.Select(SplitNameByConvention).ToArray();
             var matchedPath = FindPropertyPath(SourceProperties, nameParts, sourcePrefixPaths);
@@ -107,7 +119,7 @@ internal class MapDefinition {
             }
 
             if (matchedPath is not null) {
-                mappings.Add((destPropName, matchedPath));
+                mappings.Add((destPropName, matchedPath, null, false));
                 return true;
             }
             return false;
@@ -133,7 +145,7 @@ internal class MapDefinition {
                             nestedProperties,
                             new ArraySegment<string>(path.Array, newOffset, path.Array.Length - newOffset),
                             sourcePrefixPaths);
-                        
+
                         if (nestedPath is not null) {
                             var lastSection = nestedPath.Split('.', '?')[0];
                             var separator = nestedType.NullableAnnotation == NullableAnnotation.Annotated // Annotated as nullable
