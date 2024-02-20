@@ -105,7 +105,7 @@ public class MappingUseCases {
 
         // Assert
         using (new AssertionScope()) {
-            destination.FileFormat.Should().BeNull();
+            destination.FileFormat.Should().BeEmpty();
             destination.FileName.Should().Be(source.DocTitle);
         }
     }
