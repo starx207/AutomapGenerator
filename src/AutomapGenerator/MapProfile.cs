@@ -11,10 +11,8 @@
  *               be enforced by the generator or should I let the users decide whether to do that or not? If I allow it, the same issue could present itself as would
  *               happen by allowing more than simple member access expressions - namely, the how to handle the lambda parameter name being referenced in places other
  *               than the beginning of the expression.
- *       - TODO: Since only simple member access is now supported, null checks cannot be done (since null propogation is invalid in expressions). Need to figure out
- *               how to allow this. Something like src.Prop == null ? null : src.Prop.NullableProperty. Alternatively, don't do null checks in MapFrom() but generate
- *               code that does the null check (perhaps could automatically do this if the destination property is nullable?).
- *               Could also add a NullFallback() method to the mapping configuration to do this.
+ *       - UPDATE 2: I decided to allow any type of LINQ expression for explicit mappings. The user is responsible for making sure it is compatible with SQL if they use it.
+ *                   This greatly simplified my approach to null handling.
  *   3. ✅ Add additional source prefixes that the mapping will recognize (RecognizePrefixes())
  *   4. ✅ Add destination prefixes that the mapping will recognize (RecognizeDestinationPrefixes())
  *   5. Support for mapping to a constructor?????

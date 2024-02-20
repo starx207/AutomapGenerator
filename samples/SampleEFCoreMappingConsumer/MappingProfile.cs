@@ -4,7 +4,6 @@ using SampleEFCoreMappingConsumer.Entities;
 
 namespace SampleEFCoreMappingConsumer;
 internal class MappingProfile : MapProfile {
-    public MappingProfile() {
-        CreateMap<SourceEntity, SourceDto>();
-    }
+    public MappingProfile() 
+        => CreateMap<SourceEntity, SourceDto>();
 }
