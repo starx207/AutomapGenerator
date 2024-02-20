@@ -15,10 +15,21 @@ internal static class MapGenHelper {
 
     public static NamespaceDeclarationSyntax CreateMapperClass(MapDefinition[] sources) {
         var mapperMethods = new List<MemberDeclarationSyntax> {
-            CreateMapNewMethod(INDENT + INDENT), //.WithTrailingTrivia(CarriageReturnLineFeed, CarriageReturnLineFeed),
-            CreateMapExistingMethod(INDENT + INDENT, sources).WithTrailingTrivia(CarriageReturnLineFeed, CarriageReturnLineFeed),
-            CreateProjectToMethod(INDENT + INDENT, sources)
+            CreateMapNewMethod(INDENT + INDENT)
         };
+        var mapExistingMethods = CreateMapExistingMethods(INDENT + INDENT, sources);
+        for (var i = 0; i < mapExistingMethods.Count; i++) {
+            mapperMethods.Add(mapExistingMethods[i].WithTrailingTrivia(CarriageReturnLineFeed, CarriageReturnLineFeed));
+        }
+        var projectMethods = CreateProjectToMethods(INDENT + INDENT, sources);
+        for (var i = 0; i < projectMethods.Count; i++) {
+            if (i == projectMethods.Count - 1) {
+                // Don't add trailing trivia to the last method
+                mapperMethods.Add(projectMethods[i]);
+            } else {
+                mapperMethods.Add(projectMethods[i].WithTrailingTrivia(CarriageReturnLineFeed, CarriageReturnLineFeed));
+            }
+        }
 
         return CreateCoreNamespace()
         .WithMembers(
@@ -201,17 +212,20 @@ internal static class MapGenHelper {
                 TriviaList(CarriageReturnLineFeed)));
     }
 
-    private static MethodDeclarationSyntax CreateMapExistingMethod(string indentation, MapDefinition[] srcMappings) {
+    private static List<MethodDeclarationSyntax> CreateMapExistingMethods(string indentation, MapDefinition[] srcMappings) {
         var destinationVarName = "destination";
         var sourceVarName = "source";
 
+        var internalMapMethods = new List<MethodDeclarationSyntax>();
         var switchSections = new List<SwitchSectionSyntax>();
         for (var i = 0; i < srcMappings.Length; i++) {
             var definition = srcMappings[i];
             for (var j = 0; j < definition.Mappings.Count; j++) {
                 var mapping = definition.Mappings[j];
                 if (!mapping.ProjectionOnly) {
-                    switchSections.Add(CreateMapMethodSwitchSection(definition, mapping, indentation + INDENT + INDENT));
+                    var mapMethod = CreateInternalMapMethod(definition, mapping, indentation);
+                    internalMapMethods.Add(mapMethod);
+                    switchSections.Add(CreateMapMethodSwitchSection(mapMethod, indentation + INDENT + INDENT));
                 }
             }
         }
@@ -219,128 +233,138 @@ internal static class MapGenHelper {
         // Add the default switch section 
         switchSections.Add(CreateDefaultSwitchThrow(sourceVarName, indentation + INDENT + INDENT));
 
-        return CreateMapExistingSignature(sourceVarName, destinationVarName)
-            .WithModifiers(
-                TokenList(
-                    Token(
-                        TriviaList(Whitespace(indentation)),
-                        SyntaxKind.PublicKeyword,
-                        TriviaList(Space))))
-            .WithBody(
-                Block(
-                    SwitchStatement(
-                        TupleExpression(
-                            SeparatedList<ArgumentSyntax>(new SyntaxNodeOrToken[] {
-                                Argument(IdentifierName(sourceVarName)),
-                                Token(TriviaList(), SyntaxKind.CommaToken, TriviaList(Space)),
-                                Argument(IdentifierName(destinationVarName))
-                            }))
-                        .WithLeadingTrivia(Space))
-                    .WithLeadingTrivia(Whitespace(indentation + INDENT))
+        // Add the public method at the beginning
+        internalMapMethods.Insert(0,
+            CreateMapExistingSignature(sourceVarName, destinationVarName)
+                .WithModifiers(
+                    TokenList(
+                        Token(
+                            TriviaList(Whitespace(indentation)),
+                            SyntaxKind.PublicKeyword,
+                            TriviaList(Space))))
+                .WithBody(
+                    Block(
+                        SwitchStatement(
+                            TupleExpression(
+                                SeparatedList<ArgumentSyntax>(new SyntaxNodeOrToken[] {
+                                        Argument(IdentifierName(sourceVarName)),
+                                        Token(TriviaList(), SyntaxKind.CommaToken, TriviaList(Space)),
+                                        Argument(IdentifierName(destinationVarName))
+                                }))
+                            .WithLeadingTrivia(Space))
+                        .WithLeadingTrivia(Whitespace(indentation + INDENT))
+                        .WithOpenBraceToken(Token(
+                            TriviaList(CarriageReturnLineFeed, Whitespace(indentation + INDENT)),
+                            SyntaxKind.OpenBraceToken,
+                            TriviaList(CarriageReturnLineFeed)))
+                        .WithSections(List(switchSections))
+                        .WithCloseBraceToken(Token(
+                            TriviaList(CarriageReturnLineFeed, Whitespace(indentation + INDENT)),
+                            SyntaxKind.CloseBraceToken,
+                            TriviaList(CarriageReturnLineFeed))),
+                        ReturnStatement(IdentifierName(destinationVarName).WithLeadingTrivia(Space))
+                            .WithLeadingTrivia(CarriageReturnLineFeed, Whitespace(indentation + INDENT))
+                    )
                     .WithOpenBraceToken(Token(
-                        TriviaList(CarriageReturnLineFeed, Whitespace(indentation + INDENT)),
+                        TriviaList(CarriageReturnLineFeed, Whitespace(indentation)),
                         SyntaxKind.OpenBraceToken,
                         TriviaList(CarriageReturnLineFeed)))
-                    .WithSections(List(switchSections))
                     .WithCloseBraceToken(Token(
-                        TriviaList(CarriageReturnLineFeed, Whitespace(indentation + INDENT)),
+                        TriviaList(CarriageReturnLineFeed, Whitespace(indentation)),
                         SyntaxKind.CloseBraceToken,
-                        TriviaList(CarriageReturnLineFeed))),
-                    ReturnStatement(IdentifierName(destinationVarName).WithLeadingTrivia(Space))
-                        .WithLeadingTrivia(CarriageReturnLineFeed, Whitespace(indentation + INDENT))
-                )
-                .WithOpenBraceToken(Token(
-                    TriviaList(CarriageReturnLineFeed, Whitespace(indentation)),
-                    SyntaxKind.OpenBraceToken,
-                    TriviaList(CarriageReturnLineFeed)))
-                .WithCloseBraceToken(Token(
-                    TriviaList(CarriageReturnLineFeed, Whitespace(indentation)),
-                    SyntaxKind.CloseBraceToken,
-                    TriviaList())));
+                        TriviaList())))
+        );
+        return internalMapMethods;
     }
 
-    private static MemberDeclarationSyntax CreateProjectToMethod(string indentation, MapDefinition[] srcMappings) {
+    private static List<MethodDeclarationSyntax> CreateProjectToMethods(string indentation, MapDefinition[] srcMappings) {
         var destinationVarName = "destInstance";
         var sourceVarName = "source";
 
+        var internalProjectMethods = new List<MethodDeclarationSyntax>();
         var switchSections = new List<SwitchSectionSyntax>();
         for (var i = 0; i < srcMappings.Length; i++) {
             var definition = srcMappings[i];
             for (var j = 0; j < definition.Mappings.Count; j++) {
-                var mapping = definition.Mappings[j];
-                switchSections.Add(CreateProjectToMethodSwitchSection(definition, mapping, indentation + INDENT + INDENT));
+                var projectMethod = CreateInternalProjectMethod(definition, definition.Mappings[j], indentation);
+                internalProjectMethods.Add(projectMethod);
+                switchSections.Add(CreateProjectToMethodSwitchSection(projectMethod, indentation + INDENT + INDENT));
             }
         }
 
         // Add the default switch section
         switchSections.Add(CreateDefaultSwitchThrow(sourceVarName, indentation + INDENT + INDENT));
 
-        return CreateProjectToSignature(sourceVarName, indentation)
-            .WithModifiers(
-                TokenList(Token(
-                    TriviaList(Whitespace(indentation)),
-                    SyntaxKind.PublicKeyword,
-                    TriviaList(Space))))
-            .WithBody(
-                Block(
-                    LocalDeclarationStatement(
-                        VariableDeclaration(
-                            IdentifierName(
-                                Identifier(
-                                    TriviaList(),
-                                    SyntaxKind.VarKeyword,
-                                    "var",
-                                    "var",
-                                    TriviaList(Space))))
-                        .WithVariables(
-                            SingletonSeparatedList(
-                                VariableDeclarator(
-                                    Identifier(destinationVarName)
-                                    .WithTrailingTrivia(Space))
-                                .WithInitializer(
-                                    EqualsValueClause(
-                                        ObjectCreationExpression(
-                                            IdentifierName(GENERIC_TYPE_NAME_DESTINATION)
-                                            .WithLeadingTrivia(Space))
-                                        .WithLeadingTrivia(Space)
-                                        .WithArgumentList(ArgumentList()))))))
-                    .WithLeadingTrivia(Whitespace(indentation + INDENT))
-                    .WithTrailingTrivia(CarriageReturnLineFeed),
+        // Add the public method at the beginning
+        internalProjectMethods.Insert(0, 
+            CreateProjectToSignature(sourceVarName, indentation)
+                .WithModifiers(
+                    TokenList(Token(
+                        TriviaList(Whitespace(indentation)),
+                        SyntaxKind.PublicKeyword,
+                        TriviaList(Space))))
+                .WithBody(
+                    Block(
+                        LocalDeclarationStatement(
+                            VariableDeclaration(
+                                IdentifierName(
+                                    Identifier(
+                                        TriviaList(),
+                                        SyntaxKind.VarKeyword,
+                                        "var",
+                                        "var",
+                                        TriviaList(Space))))
+                            .WithVariables(
+                                SingletonSeparatedList(
+                                    VariableDeclarator(
+                                        Identifier(destinationVarName)
+                                        .WithTrailingTrivia(Space))
+                                    .WithInitializer(
+                                        EqualsValueClause(
+                                            ObjectCreationExpression(
+                                                IdentifierName(GENERIC_TYPE_NAME_DESTINATION)
+                                                .WithLeadingTrivia(Space))
+                                            .WithLeadingTrivia(Space)
+                                            .WithArgumentList(ArgumentList()))))))
+                        .WithLeadingTrivia(Whitespace(indentation + INDENT))
+                        .WithTrailingTrivia(CarriageReturnLineFeed),
 
-                    SwitchStatement(
-                        TupleExpression(
-                            SeparatedList<ArgumentSyntax>(new SyntaxNodeOrToken[] {
-                                Argument(IdentifierName(sourceVarName)),
-                                Token(TriviaList(), SyntaxKind.CommaToken, TriviaList(Space)),
-                                Argument(IdentifierName(destinationVarName))
-                            }))
-                        .WithLeadingTrivia(Space))
-                    .WithLeadingTrivia(Whitespace(indentation + INDENT))
+                        SwitchStatement(
+                            TupleExpression(
+                                SeparatedList<ArgumentSyntax>(new SyntaxNodeOrToken[] {
+                                    Argument(IdentifierName(sourceVarName)),
+                                    Token(TriviaList(), SyntaxKind.CommaToken, TriviaList(Space)),
+                                    Argument(IdentifierName(destinationVarName))
+                                }))
+                            .WithLeadingTrivia(Space))
+                        .WithLeadingTrivia(Whitespace(indentation + INDENT))
+                        .WithOpenBraceToken(Token(
+                            TriviaList(CarriageReturnLineFeed, Whitespace(indentation + INDENT)),
+                            SyntaxKind.OpenBraceToken,
+                            TriviaList(CarriageReturnLineFeed)))
+                        .WithSections(List(switchSections))
+                        .WithCloseBraceToken(Token(
+                            TriviaList(CarriageReturnLineFeed, Whitespace(indentation + INDENT)),
+                            SyntaxKind.CloseBraceToken,
+                            TriviaList()))
+                    )
                     .WithOpenBraceToken(Token(
-                        TriviaList(CarriageReturnLineFeed, Whitespace(indentation + INDENT)),
+                        TriviaList(CarriageReturnLineFeed, Whitespace(indentation)),
                         SyntaxKind.OpenBraceToken,
                         TriviaList(CarriageReturnLineFeed)))
-                    .WithSections(List(switchSections))
                     .WithCloseBraceToken(Token(
-                        TriviaList(CarriageReturnLineFeed, Whitespace(indentation + INDENT)),
+                        TriviaList(CarriageReturnLineFeed, Whitespace(indentation)),
                         SyntaxKind.CloseBraceToken,
-                        TriviaList()))
-                )
-                .WithOpenBraceToken(Token(
-                    TriviaList(CarriageReturnLineFeed, Whitespace(indentation)),
-                    SyntaxKind.OpenBraceToken,
-                    TriviaList(CarriageReturnLineFeed)))
-                .WithCloseBraceToken(Token(
-                    TriviaList(CarriageReturnLineFeed, Whitespace(indentation)),
-                    SyntaxKind.CloseBraceToken,
-                    TriviaList())));
+                        TriviaList())))
+        );
+        return internalProjectMethods;
     }
 
-    private static SwitchSectionSyntax CreateMapMethodSwitchSection(MapDefinition definition, MapDefinition.Mapping mapping, string indentation) {
+    private static MethodDeclarationSyntax CreateInternalMapMethod(MapDefinition definition, MapDefinition.Mapping mapping, string indentation) {
         var patternMatchSrcName = ParseTypeName(mapping.SourceName);
         var patternMatchDestName = ParseTypeName(mapping.DestinationName);
-        var matchedSrcVarName = "s";
-        var matchedDestVarName = "d";
+        var matchedSrcVarName = "source";
+        var matchedDestVarName = "destination";
 
         var expressions = new List<StatementSyntax>();
         var destMappings = definition.GetDestinationMappings(mapping);
@@ -377,9 +401,40 @@ internal static class MapGenHelper {
                 .WithLeadingTrivia(Whitespace(indentation + INDENT))
                 .WithTrailingTrivia(CarriageReturnLineFeed));
         }
-        expressions.Add(BreakStatement()
-            .WithLeadingTrivia(Whitespace(indentation + INDENT))
-            .WithTrailingTrivia(CarriageReturnLineFeed));
+
+        return MethodDeclaration(
+            PredefinedType(Token(SyntaxKind.VoidKeyword)),
+            Identifier(
+                TriviaList(Space),
+                "MapInternal",
+                TriviaList())
+        ).WithModifiers(TokenList(
+            Token(
+                TriviaList(Whitespace(indentation)),
+                SyntaxKind.PrivateKeyword,
+                TriviaList(Space))
+        )).WithParameterList(ParameterList(SeparatedList<ParameterSyntax>(new SyntaxNodeOrToken[] {
+            Parameter(Identifier(TriviaList(Space), matchedSrcVarName, TriviaList())).WithType(patternMatchSrcName),
+            Token(TriviaList(), SyntaxKind.CommaToken, TriviaList(Space)),
+            Parameter(Identifier(TriviaList(Space), matchedDestVarName, TriviaList())).WithType(patternMatchDestName)
+        })))
+        .WithBody(
+            Block(expressions)
+            .WithOpenBraceToken(Token(
+                TriviaList(CarriageReturnLineFeed, Whitespace(indentation)),
+                SyntaxKind.OpenBraceToken,
+                TriviaList(CarriageReturnLineFeed)))
+            .WithCloseBraceToken(Token(
+                TriviaList(Whitespace(indentation)),
+                SyntaxKind.CloseBraceToken,
+                TriviaList())));
+    }
+
+    private static SwitchSectionSyntax CreateMapMethodSwitchSection(MethodDeclarationSyntax mapMethod, string indentation) {
+        var patternMatchSrcName = mapMethod.ParameterList.Parameters[0].Type!;
+        var patternMatchDestName = mapMethod.ParameterList.Parameters[1].Type!;
+        var matchedSrcVarName = "s";
+        var matchedDestVarName = "d";
 
         return SwitchSection()
             .WithLabels(
@@ -412,14 +467,27 @@ internal static class MapGenHelper {
                         Token(SyntaxKind.ColonToken))))
             .WithLeadingTrivia(Whitespace(indentation))
             .WithTrailingTrivia(CarriageReturn)
-            .WithStatements(List(expressions));
+            .WithStatements(List(new StatementSyntax[] {
+                ExpressionStatement(
+                    InvocationExpression(IdentifierName(mapMethod.Identifier.Text))
+                        .WithArgumentList(ArgumentList(SeparatedList<ArgumentSyntax>(new SyntaxNodeOrToken[] {
+                            Argument(IdentifierName(matchedSrcVarName)),
+                            Token(SyntaxKind.CommaToken).WithTrailingTrivia(Space),
+                            Argument(IdentifierName(matchedDestVarName))
+                        }))))
+                    .WithLeadingTrivia(Whitespace(indentation + INDENT))
+                    .WithTrailingTrivia(CarriageReturnLineFeed),
+                BreakStatement()
+                    .WithLeadingTrivia(Whitespace(indentation + INDENT))
+                    .WithTrailingTrivia(CarriageReturnLineFeed)
+            }));
     }
 
-    private static SwitchSectionSyntax CreateProjectToMethodSwitchSection(MapDefinition definition, MapDefinition.Mapping mapping, string indentation) {
-        var patternMatchSrcName = ParseTypeName(mapping.SourceName);
+    private static MethodDeclarationSyntax CreateInternalProjectMethod(MapDefinition definition, MapDefinition.Mapping mapping, string indentation) {
+        var patternMatchSrcName = WrapTypeInIQueryable(ParseTypeName(mapping.SourceName));
         var patternMatchDestName = ParseTypeName(mapping.DestinationName);
-        var matchedSrcVarName = "s";
-        var lambdaVarName = "src";
+        var matchedSrcVarName = "sourceQueryable";
+        var lambdaVarName = "source";
 
         var expressions = new List<SyntaxNodeOrToken>();
         var destMappings = definition.GetDestinationMappings(mapping);
@@ -476,6 +544,78 @@ internal static class MapGenHelper {
                         TriviaList())));
         }
 
+        return MethodDeclaration(
+            WrapTypeInIQueryable(patternMatchDestName),
+            Identifier(
+                TriviaList(Space),
+                "ProjectInternal",
+                TriviaList())
+        ).WithModifiers(TokenList(
+            Token(
+                TriviaList(Whitespace(indentation)),
+                SyntaxKind.PrivateKeyword,
+                TriviaList(Space))
+        )).WithParameterList(ParameterList(SeparatedList<ParameterSyntax>(new SyntaxNodeOrToken[] {
+            Parameter(Identifier(TriviaList(Space), matchedSrcVarName, TriviaList())).WithType(patternMatchSrcName),
+            Token(TriviaList(), SyntaxKind.CommaToken, TriviaList(Space)),
+            Parameter(Identifier(TriviaList(Space), "_", TriviaList())).WithType(patternMatchDestName)
+        })))
+        .WithBody(
+            Block(SingletonList<StatementSyntax>(
+                ReturnStatement(
+                    InvocationExpression(
+                        MemberAccessExpression(
+                            SyntaxKind.SimpleMemberAccessExpression,
+                            MemberAccessExpression(
+                                SyntaxKind.SimpleMemberAccessExpression,
+                                AliasQualifiedName(
+                                    IdentifierName(Token(SyntaxKind.GlobalKeyword)),
+                                    IdentifierName(typeof(Queryable).Namespace)),
+                                IdentifierName(nameof(Queryable))),
+                            IdentifierName(nameof(Queryable.Select))))
+                    .WithLeadingTrivia(Space)
+                    .WithArgumentList(
+                        ArgumentList(
+                            SeparatedList<ArgumentSyntax>(new SyntaxNodeOrToken[] {
+                                Argument(IdentifierName(matchedSrcVarName)),
+                                Token(
+                                    TriviaList(),
+                                    SyntaxKind.CommaToken,
+                                    TriviaList(Space)),
+                                Argument(SimpleLambdaExpression(
+                                    Parameter(Identifier(
+                                        TriviaList(),
+                                        lambdaVarName,
+                                        TriviaList(Space))))
+                                .WithExpressionBody(objectInitializerExpression))
+                            }))))
+                .WithLeadingTrivia(Whitespace(indentation + INDENT))
+                .WithTrailingTrivia(CarriageReturnLineFeed)
+            )).WithOpenBraceToken(Token(
+                TriviaList(CarriageReturnLineFeed, Whitespace(indentation)),
+                SyntaxKind.OpenBraceToken,
+                TriviaList(CarriageReturnLineFeed)))
+            .WithCloseBraceToken(Token(
+                TriviaList(Whitespace(indentation)),
+                SyntaxKind.CloseBraceToken,
+                TriviaList())));
+    }
+
+    private static TypeSyntax WrapTypeInIQueryable(TypeSyntax innerType) 
+        => QualifiedName(
+            AliasQualifiedName(
+                IdentifierName(Token(SyntaxKind.GlobalKeyword)),
+                IdentifierName(typeof(IQueryable).Namespace)),
+            GenericName(nameof(IQueryable))
+                .WithTypeArgumentList(TypeArgumentList(
+                    SingletonSeparatedList(innerType))));
+
+    private static SwitchSectionSyntax CreateProjectToMethodSwitchSection(MethodDeclarationSyntax projectMethod, string indentation) {
+        var patternMatchSrcName = projectMethod.ParameterList.Parameters[0].Type!;
+        var patternMatchDestName = projectMethod.ParameterList.Parameters[1].Type!;
+        var matchedSrcVarName = "s";
+        var matchedDestVarName = "d";
+
         return SwitchSection()
             .WithLabels(
                 SingletonList<SwitchLabelSyntax>(
@@ -486,12 +626,7 @@ internal static class MapGenHelper {
                                 SeparatedList<SubpatternSyntax>(new SyntaxNodeOrToken[] {
                                     Subpattern(
                                         DeclarationPattern(
-                                            AliasQualifiedName(
-                                                IdentifierName(Token(SyntaxKind.GlobalKeyword)),
-                                                GenericName(Identifier(typeof(IQueryable).FullName))
-                                                .WithTypeArgumentList(
-                                                    TypeArgumentList(SingletonSeparatedList(patternMatchSrcName)))
-                                            ),
+                                            patternMatchSrcName,
                                             SingleVariableDesignation(Identifier(
                                                 TriviaList(Space),
                                                 matchedSrcVarName,
@@ -502,7 +637,12 @@ internal static class MapGenHelper {
                                         SyntaxKind.CommaToken,
                                         TriviaList(Space)),
                                     Subpattern(
-                                        ConstantPattern(ParseExpression(mapping.DestinationName)))
+                                        DeclarationPattern(
+                                            patternMatchDestName,
+                                            SingleVariableDesignation(Identifier(
+                                                TriviaList(Space),
+                                                matchedDestVarName,
+                                                TriviaList()))))
                                 })))
                         .WithLeadingTrivia(Space),
                         Token(SyntaxKind.ColonToken))
@@ -530,31 +670,13 @@ internal static class MapGenHelper {
                             ArgumentList(
                                 SingletonSeparatedList(
                                     Argument(
-                                        InvocationExpression(
-                                            MemberAccessExpression(
-                                                SyntaxKind.SimpleMemberAccessExpression,
-                                                MemberAccessExpression(
-                                                    SyntaxKind.SimpleMemberAccessExpression,
-                                                    AliasQualifiedName(
-                                                        IdentifierName(Token(SyntaxKind.GlobalKeyword)),
-                                                        IdentifierName(typeof(Queryable).Namespace)),
-                                                    IdentifierName(nameof(Queryable))),
-                                                IdentifierName(nameof(Queryable.Select))))
-                                        .WithArgumentList(
-                                            ArgumentList(
-                                                SeparatedList<ArgumentSyntax>(new SyntaxNodeOrToken[] {
-                                                    Argument(IdentifierName(matchedSrcVarName)),
-                                                    Token(
-                                                        TriviaList(),
-                                                        SyntaxKind.CommaToken,
-                                                        TriviaList(Space)),
-                                                    Argument(SimpleLambdaExpression(
-                                                        Parameter(Identifier(
-                                                            TriviaList(),
-                                                            lambdaVarName,
-                                                            TriviaList(Space))))
-                                                    .WithExpressionBody(objectInitializerExpression))
-                                                }))))))))
+                                        InvocationExpression(IdentifierName(projectMethod.Identifier.Text))
+                                            .WithArgumentList(ArgumentList(SeparatedList<ArgumentSyntax>(new SyntaxNodeOrToken[] {
+                                                Argument(IdentifierName(matchedSrcVarName)),
+                                                Token(SyntaxKind.CommaToken).WithTrailingTrivia(Space),
+                                                Argument(IdentifierName(matchedDestVarName)),
+                                            })))
+                                        )))))
                     .WithLeadingTrivia(Whitespace(indentation + INDENT))
                     .WithTrailingTrivia(CarriageReturnLineFeed)));
     }

@@ -13,10 +13,7 @@ namespace AutomapGenerator
             switch (source, destination)
             {
                 case (AutomapGenerator.Generator.VerificationTests.CreateMap.Sources.FullSourceObj s, AutomapGenerator.Generator.VerificationTests.CreateMap.Sources.DestinationWithSrcPrefix d):
-                    d.FullSourceObjId = s.Id;
-                    d.FullSourceObjType = s.Type;
-                    d.Timestamp = s.Timestamp;
-                    d.InUse = s.InUse;
+                    MapInternal(s, d);
                     break;
                 default:
                     throw new MappingException($"Mapping from {source.GetType().Name} to {typeof(TDestination).Name} has not been configured.");
@@ -25,23 +22,36 @@ namespace AutomapGenerator
             return destination;
         }
 
+        private void MapInternal(AutomapGenerator.Generator.VerificationTests.CreateMap.Sources.FullSourceObj source, AutomapGenerator.Generator.VerificationTests.CreateMap.Sources.DestinationWithSrcPrefix destination)
+        {
+            destination.FullSourceObjId = source.Id;
+            destination.FullSourceObjType = source.Type;
+            destination.Timestamp = source.Timestamp;
+            destination.InUse = source.InUse;
+        }
+
         public global::System.Linq.IQueryable<TDestination> ProjectTo<TDestination>(global::System.Linq.IQueryable<object> source)
             where TDestination : new()
         {
             var destInstance = new TDestination();
             switch (source, destInstance)
             {
-                case (global::System.Linq.IQueryable<AutomapGenerator.Generator.VerificationTests.CreateMap.Sources.FullSourceObj> s, AutomapGenerator.Generator.VerificationTests.CreateMap.Sources.DestinationWithSrcPrefix):
-                    return global::System.Linq.Queryable.Cast<TDestination>(global::System.Linq.Queryable.Select(s, src => new AutomapGenerator.Generator.VerificationTests.CreateMap.Sources.DestinationWithSrcPrefix()
-                    {
-                        FullSourceObjId = src.Id,
-                        FullSourceObjType = src.Type,
-                        Timestamp = src.Timestamp,
-                        InUse = src.InUse
-                    }));
+                case (global::System.Linq.IQueryable<AutomapGenerator.Generator.VerificationTests.CreateMap.Sources.FullSourceObj> s, AutomapGenerator.Generator.VerificationTests.CreateMap.Sources.DestinationWithSrcPrefix d):
+                    return global::System.Linq.Queryable.Cast<TDestination>(ProjectInternal(s, d));
                 default:
                     throw new MappingException($"Mapping from {source.GetType().Name} to {typeof(TDestination).Name} has not been configured.");
             }
+        }
+
+        private global::System.Linq.IQueryable<AutomapGenerator.Generator.VerificationTests.CreateMap.Sources.DestinationWithSrcPrefix> ProjectInternal(global::System.Linq.IQueryable<AutomapGenerator.Generator.VerificationTests.CreateMap.Sources.FullSourceObj> sourceQueryable, AutomapGenerator.Generator.VerificationTests.CreateMap.Sources.DestinationWithSrcPrefix _)
+        {
+            return global::System.Linq.Queryable.Select(sourceQueryable, source => new AutomapGenerator.Generator.VerificationTests.CreateMap.Sources.DestinationWithSrcPrefix()
+            {
+                FullSourceObjId = source.Id,
+                FullSourceObjType = source.Type,
+                Timestamp = source.Timestamp,
+                InUse = source.InUse
+            });
         }
     }
 }

@@ -13,8 +13,7 @@ namespace AutomapGenerator
             switch (source, destination)
             {
                 case (AutomapGenerator.Generator.VerificationTests.NullFallbacks.Sources.SourceObj s, AutomapGenerator.Generator.VerificationTests.NullFallbacks.Sources.DestinationObj d):
-                    d.MappedString = s.NullableString ?? s.NonNullString;
-                    d.NullableMappedString = s.NullableString ?? s.OtherNullableString;
+                    MapInternal(s, d);
                     break;
                 default:
                     throw new MappingException($"Mapping from {source.GetType().Name} to {typeof(TDestination).Name} has not been configured.");
@@ -23,21 +22,32 @@ namespace AutomapGenerator
             return destination;
         }
 
+        private void MapInternal(AutomapGenerator.Generator.VerificationTests.NullFallbacks.Sources.SourceObj source, AutomapGenerator.Generator.VerificationTests.NullFallbacks.Sources.DestinationObj destination)
+        {
+            destination.MappedString = source.NullableString ?? source.NonNullString;
+            destination.NullableMappedString = source.NullableString ?? source.OtherNullableString;
+        }
+
         public global::System.Linq.IQueryable<TDestination> ProjectTo<TDestination>(global::System.Linq.IQueryable<object> source)
             where TDestination : new()
         {
             var destInstance = new TDestination();
             switch (source, destInstance)
             {
-                case (global::System.Linq.IQueryable<AutomapGenerator.Generator.VerificationTests.NullFallbacks.Sources.SourceObj> s, AutomapGenerator.Generator.VerificationTests.NullFallbacks.Sources.DestinationObj):
-                    return global::System.Linq.Queryable.Cast<TDestination>(global::System.Linq.Queryable.Select(s, src => new AutomapGenerator.Generator.VerificationTests.NullFallbacks.Sources.DestinationObj()
-                    {
-                        MappedString = src.NullableString != null ? src.NullableString : src.NonNullString,
-                        NullableMappedString = src.NullableString != null ? src.NullableString : src.OtherNullableString
-                    }));
+                case (global::System.Linq.IQueryable<AutomapGenerator.Generator.VerificationTests.NullFallbacks.Sources.SourceObj> s, AutomapGenerator.Generator.VerificationTests.NullFallbacks.Sources.DestinationObj d):
+                    return global::System.Linq.Queryable.Cast<TDestination>(ProjectInternal(s, d));
                 default:
                     throw new MappingException($"Mapping from {source.GetType().Name} to {typeof(TDestination).Name} has not been configured.");
             }
+        }
+
+        private global::System.Linq.IQueryable<AutomapGenerator.Generator.VerificationTests.NullFallbacks.Sources.DestinationObj> ProjectInternal(global::System.Linq.IQueryable<AutomapGenerator.Generator.VerificationTests.NullFallbacks.Sources.SourceObj> sourceQueryable, AutomapGenerator.Generator.VerificationTests.NullFallbacks.Sources.DestinationObj _)
+        {
+            return global::System.Linq.Queryable.Select(sourceQueryable, source => new AutomapGenerator.Generator.VerificationTests.NullFallbacks.Sources.DestinationObj()
+            {
+                MappedString = source.NullableString != null ? source.NullableString : source.NonNullString,
+                NullableMappedString = source.NullableString != null ? source.NullableString : source.OtherNullableString
+            });
         }
     }
 }

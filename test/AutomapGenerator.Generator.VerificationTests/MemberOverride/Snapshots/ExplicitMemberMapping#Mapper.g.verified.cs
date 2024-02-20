@@ -13,8 +13,7 @@ namespace AutomapGenerator
             switch (source, destination)
             {
                 case (AutomapGenerator.Generator.VerificationTests.MemberOverride.Sources.FullSourceObj s, AutomapGenerator.Generator.VerificationTests.MemberOverride.Sources.DestinationThatBreaksNamingConvention d):
-                    d.StringProperty = s.Type;
-                    d.HasTimestamp = s.Timestamp.HasValue;
+                    MapInternal(s, d);
                     break;
                 default:
                     throw new MappingException($"Mapping from {source.GetType().Name} to {typeof(TDestination).Name} has not been configured.");
@@ -23,21 +22,32 @@ namespace AutomapGenerator
             return destination;
         }
 
+        private void MapInternal(AutomapGenerator.Generator.VerificationTests.MemberOverride.Sources.FullSourceObj source, AutomapGenerator.Generator.VerificationTests.MemberOverride.Sources.DestinationThatBreaksNamingConvention destination)
+        {
+            destination.StringProperty = source.Type;
+            destination.HasTimestamp = source.Timestamp.HasValue;
+        }
+
         public global::System.Linq.IQueryable<TDestination> ProjectTo<TDestination>(global::System.Linq.IQueryable<object> source)
             where TDestination : new()
         {
             var destInstance = new TDestination();
             switch (source, destInstance)
             {
-                case (global::System.Linq.IQueryable<AutomapGenerator.Generator.VerificationTests.MemberOverride.Sources.FullSourceObj> s, AutomapGenerator.Generator.VerificationTests.MemberOverride.Sources.DestinationThatBreaksNamingConvention):
-                    return global::System.Linq.Queryable.Cast<TDestination>(global::System.Linq.Queryable.Select(s, src => new AutomapGenerator.Generator.VerificationTests.MemberOverride.Sources.DestinationThatBreaksNamingConvention()
-                    {
-                        StringProperty = src.Type,
-                        HasTimestamp = src.Timestamp.HasValue
-                    }));
+                case (global::System.Linq.IQueryable<AutomapGenerator.Generator.VerificationTests.MemberOverride.Sources.FullSourceObj> s, AutomapGenerator.Generator.VerificationTests.MemberOverride.Sources.DestinationThatBreaksNamingConvention d):
+                    return global::System.Linq.Queryable.Cast<TDestination>(ProjectInternal(s, d));
                 default:
                     throw new MappingException($"Mapping from {source.GetType().Name} to {typeof(TDestination).Name} has not been configured.");
             }
+        }
+
+        private global::System.Linq.IQueryable<AutomapGenerator.Generator.VerificationTests.MemberOverride.Sources.DestinationThatBreaksNamingConvention> ProjectInternal(global::System.Linq.IQueryable<AutomapGenerator.Generator.VerificationTests.MemberOverride.Sources.FullSourceObj> sourceQueryable, AutomapGenerator.Generator.VerificationTests.MemberOverride.Sources.DestinationThatBreaksNamingConvention _)
+        {
+            return global::System.Linq.Queryable.Select(sourceQueryable, source => new AutomapGenerator.Generator.VerificationTests.MemberOverride.Sources.DestinationThatBreaksNamingConvention()
+            {
+                StringProperty = source.Type,
+                HasTimestamp = source.Timestamp.HasValue
+            });
         }
     }
 }

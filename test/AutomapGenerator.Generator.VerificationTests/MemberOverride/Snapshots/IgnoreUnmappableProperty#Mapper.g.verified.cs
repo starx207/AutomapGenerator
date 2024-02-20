@@ -13,7 +13,7 @@ namespace AutomapGenerator
             switch (source, destination)
             {
                 case (AutomapGenerator.Generator.VerificationTests.MemberOverride.Sources.SimpleSourceObj s, AutomapGenerator.Generator.VerificationTests.MemberOverride.Sources.SimpleDestinationObj d):
-                    d.Id = s.Id;
+                    MapInternal(s, d);
                     break;
                 default:
                     throw new MappingException($"Mapping from {source.GetType().Name} to {typeof(TDestination).Name} has not been configured.");
@@ -22,20 +22,30 @@ namespace AutomapGenerator
             return destination;
         }
 
+        private void MapInternal(AutomapGenerator.Generator.VerificationTests.MemberOverride.Sources.SimpleSourceObj source, AutomapGenerator.Generator.VerificationTests.MemberOverride.Sources.SimpleDestinationObj destination)
+        {
+            destination.Id = source.Id;
+        }
+
         public global::System.Linq.IQueryable<TDestination> ProjectTo<TDestination>(global::System.Linq.IQueryable<object> source)
             where TDestination : new()
         {
             var destInstance = new TDestination();
             switch (source, destInstance)
             {
-                case (global::System.Linq.IQueryable<AutomapGenerator.Generator.VerificationTests.MemberOverride.Sources.SimpleSourceObj> s, AutomapGenerator.Generator.VerificationTests.MemberOverride.Sources.SimpleDestinationObj):
-                    return global::System.Linq.Queryable.Cast<TDestination>(global::System.Linq.Queryable.Select(s, src => new AutomapGenerator.Generator.VerificationTests.MemberOverride.Sources.SimpleDestinationObj()
-                    {
-                        Id = src.Id
-                    }));
+                case (global::System.Linq.IQueryable<AutomapGenerator.Generator.VerificationTests.MemberOverride.Sources.SimpleSourceObj> s, AutomapGenerator.Generator.VerificationTests.MemberOverride.Sources.SimpleDestinationObj d):
+                    return global::System.Linq.Queryable.Cast<TDestination>(ProjectInternal(s, d));
                 default:
                     throw new MappingException($"Mapping from {source.GetType().Name} to {typeof(TDestination).Name} has not been configured.");
             }
+        }
+
+        private global::System.Linq.IQueryable<AutomapGenerator.Generator.VerificationTests.MemberOverride.Sources.SimpleDestinationObj> ProjectInternal(global::System.Linq.IQueryable<AutomapGenerator.Generator.VerificationTests.MemberOverride.Sources.SimpleSourceObj> sourceQueryable, AutomapGenerator.Generator.VerificationTests.MemberOverride.Sources.SimpleDestinationObj _)
+        {
+            return global::System.Linq.Queryable.Select(sourceQueryable, source => new AutomapGenerator.Generator.VerificationTests.MemberOverride.Sources.SimpleDestinationObj()
+            {
+                Id = source.Id
+            });
         }
     }
 }

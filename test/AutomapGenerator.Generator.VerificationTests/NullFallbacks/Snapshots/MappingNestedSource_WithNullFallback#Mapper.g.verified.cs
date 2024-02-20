@@ -13,10 +13,7 @@ namespace AutomapGenerator
             switch (source, destination)
             {
                 case (AutomapGenerator.Generator.VerificationTests.NullFallbacks.Sources.SourceObj s, AutomapGenerator.Generator.VerificationTests.NullFallbacks.Sources.DestinationObjFromNested d):
-                    d.ChildObjValue = s.ChildObj?.Value ?? "something else";
-                    d.NonNullString = s.ChildObj?.Value ?? "my default";
-                    d.ChildObjOtherValue = s.ChildObj?.OtherValue ?? s.OtherNullableString;
-                    d.NullableString = s.ChildObj?.OtherValue ?? s.ChildObj?.Value;
+                    MapInternal(s, d);
                     break;
                 default:
                     throw new MappingException($"Mapping from {source.GetType().Name} to {typeof(TDestination).Name} has not been configured.");
@@ -25,23 +22,36 @@ namespace AutomapGenerator
             return destination;
         }
 
+        private void MapInternal(AutomapGenerator.Generator.VerificationTests.NullFallbacks.Sources.SourceObj source, AutomapGenerator.Generator.VerificationTests.NullFallbacks.Sources.DestinationObjFromNested destination)
+        {
+            destination.ChildObjValue = source.ChildObj?.Value ?? "something else";
+            destination.NonNullString = source.ChildObj?.Value ?? "my default";
+            destination.ChildObjOtherValue = source.ChildObj?.OtherValue ?? source.OtherNullableString;
+            destination.NullableString = source.ChildObj?.OtherValue ?? source.ChildObj?.Value;
+        }
+
         public global::System.Linq.IQueryable<TDestination> ProjectTo<TDestination>(global::System.Linq.IQueryable<object> source)
             where TDestination : new()
         {
             var destInstance = new TDestination();
             switch (source, destInstance)
             {
-                case (global::System.Linq.IQueryable<AutomapGenerator.Generator.VerificationTests.NullFallbacks.Sources.SourceObj> s, AutomapGenerator.Generator.VerificationTests.NullFallbacks.Sources.DestinationObjFromNested):
-                    return global::System.Linq.Queryable.Cast<TDestination>(global::System.Linq.Queryable.Select(s, src => new AutomapGenerator.Generator.VerificationTests.NullFallbacks.Sources.DestinationObjFromNested()
-                    {
-                        ChildObjValue = src.ChildObj != null && src.ChildObj.Value != null ? src.ChildObj.Value : "something else",
-                        NonNullString = src.ChildObj != null && src.ChildObj.Value != null ? src.ChildObj.Value : "my default",
-                        ChildObjOtherValue = src.ChildObj != null && src.ChildObj.OtherValue != null ? src.ChildObj.OtherValue : src.OtherNullableString,
-                        NullableString = src.ChildObj != null && src.ChildObj.OtherValue != null ? src.ChildObj.OtherValue : (src.ChildObj != null ? src.ChildObj.Value : null)
-                    }));
+                case (global::System.Linq.IQueryable<AutomapGenerator.Generator.VerificationTests.NullFallbacks.Sources.SourceObj> s, AutomapGenerator.Generator.VerificationTests.NullFallbacks.Sources.DestinationObjFromNested d):
+                    return global::System.Linq.Queryable.Cast<TDestination>(ProjectInternal(s, d));
                 default:
                     throw new MappingException($"Mapping from {source.GetType().Name} to {typeof(TDestination).Name} has not been configured.");
             }
+        }
+
+        private global::System.Linq.IQueryable<AutomapGenerator.Generator.VerificationTests.NullFallbacks.Sources.DestinationObjFromNested> ProjectInternal(global::System.Linq.IQueryable<AutomapGenerator.Generator.VerificationTests.NullFallbacks.Sources.SourceObj> sourceQueryable, AutomapGenerator.Generator.VerificationTests.NullFallbacks.Sources.DestinationObjFromNested _)
+        {
+            return global::System.Linq.Queryable.Select(sourceQueryable, source => new AutomapGenerator.Generator.VerificationTests.NullFallbacks.Sources.DestinationObjFromNested()
+            {
+                ChildObjValue = source.ChildObj != null && source.ChildObj.Value != null ? source.ChildObj.Value : "something else",
+                NonNullString = source.ChildObj != null && source.ChildObj.Value != null ? source.ChildObj.Value : "my default",
+                ChildObjOtherValue = source.ChildObj != null && source.ChildObj.OtherValue != null ? source.ChildObj.OtherValue : source.OtherNullableString,
+                NullableString = source.ChildObj != null && source.ChildObj.OtherValue != null ? source.ChildObj.OtherValue : (source.ChildObj != null ? source.ChildObj.Value : null)
+            });
         }
     }
 }

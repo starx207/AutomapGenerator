@@ -13,8 +13,7 @@ namespace AutomapGenerator
             switch (source, destination)
             {
                 case (AutomapGenerator.Generator.VerificationTests.RecognizePrefixes.Sources.SourceWithNestedObject s, AutomapGenerator.Generator.VerificationTests.RecognizePrefixes.Sources.FlattenedDestination d):
-                    d.ChildDescription = s.TestChild?.TestDescription;
-                    d.ChildOtherProp = s.TestChild?.OtherProp;
+                    MapInternal(s, d);
                     break;
                 default:
                     throw new MappingException($"Mapping from {source.GetType().Name} to {typeof(TDestination).Name} has not been configured.");
@@ -23,21 +22,32 @@ namespace AutomapGenerator
             return destination;
         }
 
+        private void MapInternal(AutomapGenerator.Generator.VerificationTests.RecognizePrefixes.Sources.SourceWithNestedObject source, AutomapGenerator.Generator.VerificationTests.RecognizePrefixes.Sources.FlattenedDestination destination)
+        {
+            destination.ChildDescription = source.TestChild?.TestDescription;
+            destination.ChildOtherProp = source.TestChild?.OtherProp;
+        }
+
         public global::System.Linq.IQueryable<TDestination> ProjectTo<TDestination>(global::System.Linq.IQueryable<object> source)
             where TDestination : new()
         {
             var destInstance = new TDestination();
             switch (source, destInstance)
             {
-                case (global::System.Linq.IQueryable<AutomapGenerator.Generator.VerificationTests.RecognizePrefixes.Sources.SourceWithNestedObject> s, AutomapGenerator.Generator.VerificationTests.RecognizePrefixes.Sources.FlattenedDestination):
-                    return global::System.Linq.Queryable.Cast<TDestination>(global::System.Linq.Queryable.Select(s, src => new AutomapGenerator.Generator.VerificationTests.RecognizePrefixes.Sources.FlattenedDestination()
-                    {
-                        ChildDescription = src.TestChild != null ? src.TestChild.TestDescription : null,
-                        ChildOtherProp = src.TestChild != null ? src.TestChild.OtherProp : null
-                    }));
+                case (global::System.Linq.IQueryable<AutomapGenerator.Generator.VerificationTests.RecognizePrefixes.Sources.SourceWithNestedObject> s, AutomapGenerator.Generator.VerificationTests.RecognizePrefixes.Sources.FlattenedDestination d):
+                    return global::System.Linq.Queryable.Cast<TDestination>(ProjectInternal(s, d));
                 default:
                     throw new MappingException($"Mapping from {source.GetType().Name} to {typeof(TDestination).Name} has not been configured.");
             }
+        }
+
+        private global::System.Linq.IQueryable<AutomapGenerator.Generator.VerificationTests.RecognizePrefixes.Sources.FlattenedDestination> ProjectInternal(global::System.Linq.IQueryable<AutomapGenerator.Generator.VerificationTests.RecognizePrefixes.Sources.SourceWithNestedObject> sourceQueryable, AutomapGenerator.Generator.VerificationTests.RecognizePrefixes.Sources.FlattenedDestination _)
+        {
+            return global::System.Linq.Queryable.Select(sourceQueryable, source => new AutomapGenerator.Generator.VerificationTests.RecognizePrefixes.Sources.FlattenedDestination()
+            {
+                ChildDescription = source.TestChild != null ? source.TestChild.TestDescription : null,
+                ChildOtherProp = source.TestChild != null ? source.TestChild.OtherProp : null
+            });
         }
     }
 }

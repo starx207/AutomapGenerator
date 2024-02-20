@@ -13,9 +13,7 @@ namespace AutomapGenerator
             switch (source, destination)
             {
                 case (AutomapGenerator.Generator.VerificationTests.CreateMap.Sources.SourceObjWithDeepNesting s, AutomapGenerator.Generator.VerificationTests.CreateMap.Sources.DestinationFromDeepNestedSrc d):
-                    d.Level1Level2Description = s.Level1?.Level2?.Description;
-                    d.ExplicitlyMappedValue = s.Level1?.Level2?.Description;
-                    d.OtherExplicitValue = s.Level1?.Level2?.Description;
+                    MapInternal(s, d);
                     break;
                 default:
                     throw new MappingException($"Mapping from {source.GetType().Name} to {typeof(TDestination).Name} has not been configured.");
@@ -24,22 +22,34 @@ namespace AutomapGenerator
             return destination;
         }
 
+        private void MapInternal(AutomapGenerator.Generator.VerificationTests.CreateMap.Sources.SourceObjWithDeepNesting source, AutomapGenerator.Generator.VerificationTests.CreateMap.Sources.DestinationFromDeepNestedSrc destination)
+        {
+            destination.Level1Level2Description = source.Level1?.Level2?.Description;
+            destination.ExplicitlyMappedValue = source.Level1?.Level2?.Description;
+            destination.OtherExplicitValue = source.Level1?.Level2?.Description;
+        }
+
         public global::System.Linq.IQueryable<TDestination> ProjectTo<TDestination>(global::System.Linq.IQueryable<object> source)
             where TDestination : new()
         {
             var destInstance = new TDestination();
             switch (source, destInstance)
             {
-                case (global::System.Linq.IQueryable<AutomapGenerator.Generator.VerificationTests.CreateMap.Sources.SourceObjWithDeepNesting> s, AutomapGenerator.Generator.VerificationTests.CreateMap.Sources.DestinationFromDeepNestedSrc):
-                    return global::System.Linq.Queryable.Cast<TDestination>(global::System.Linq.Queryable.Select(s, src => new AutomapGenerator.Generator.VerificationTests.CreateMap.Sources.DestinationFromDeepNestedSrc()
-                    {
-                        Level1Level2Description = src.Level1 != null && src.Level1.Level2 != null ? src.Level1.Level2.Description : null,
-                        ExplicitlyMappedValue = src.Level1 != null && src.Level1.Level2 != null ? src.Level1.Level2.Description : null,
-                        OtherExplicitValue = src.Level1 != null && src.Level1.Level2 != null ? src.Level1.Level2.Description : null
-                    }));
+                case (global::System.Linq.IQueryable<AutomapGenerator.Generator.VerificationTests.CreateMap.Sources.SourceObjWithDeepNesting> s, AutomapGenerator.Generator.VerificationTests.CreateMap.Sources.DestinationFromDeepNestedSrc d):
+                    return global::System.Linq.Queryable.Cast<TDestination>(ProjectInternal(s, d));
                 default:
                     throw new MappingException($"Mapping from {source.GetType().Name} to {typeof(TDestination).Name} has not been configured.");
             }
+        }
+
+        private global::System.Linq.IQueryable<AutomapGenerator.Generator.VerificationTests.CreateMap.Sources.DestinationFromDeepNestedSrc> ProjectInternal(global::System.Linq.IQueryable<AutomapGenerator.Generator.VerificationTests.CreateMap.Sources.SourceObjWithDeepNesting> sourceQueryable, AutomapGenerator.Generator.VerificationTests.CreateMap.Sources.DestinationFromDeepNestedSrc _)
+        {
+            return global::System.Linq.Queryable.Select(sourceQueryable, source => new AutomapGenerator.Generator.VerificationTests.CreateMap.Sources.DestinationFromDeepNestedSrc()
+            {
+                Level1Level2Description = source.Level1 != null && source.Level1.Level2 != null ? source.Level1.Level2.Description : null,
+                ExplicitlyMappedValue = source.Level1 != null && source.Level1.Level2 != null ? source.Level1.Level2.Description : null,
+                OtherExplicitValue = source.Level1 != null && source.Level1.Level2 != null ? source.Level1.Level2.Description : null
+            });
         }
     }
 }

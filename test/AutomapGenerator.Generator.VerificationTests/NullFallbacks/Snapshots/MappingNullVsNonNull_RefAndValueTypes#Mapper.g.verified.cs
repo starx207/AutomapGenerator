@@ -13,22 +13,7 @@ namespace AutomapGenerator
             switch (source, destination)
             {
                 case (AutomapGenerator.Generator.VerificationTests.NullFallbacks.Sources.SourceWithNullableValueTypes s, AutomapGenerator.Generator.VerificationTests.NullFallbacks.Sources.DestinationForNullableValueTypes d):
-                    d.NonNullableRefSimpleMap = s.NonNullableRefType;
-                    d.NonNullableRefMapWithStaticFallback = s.NullableRefType ?? "test";
-                    d.NonNullableRefMapWithPropertyFallback = s.NullableRefType ?? s.NonNullableRefType;
-                    d.NullableRefSimpleMap = s.NullableRefType;
-                    d.NullableRefMapWithStaticFallback = s.NullableRefType ?? "test";
-                    d.NullableRefMapWithPropertyFallback = s.NullableRefType ?? s.NonNullableRefType;
-                    d.NullableRefType = s.NullableRefType ?? "test";
-                    d.SourceWithNullableValueTypesNullableRefType = s.NullableRefType ?? s.NonNullableRefType;
-                    d.NonNullableValueSimpleMap = s.NonNullableValueType;
-                    d.NonNullableValueMapWithStaticFallback = s.NullableValueType ?? 99;
-                    d.NonNullableValueMapWithPropertyFallback = s.NullableValueType ?? s.NonNullableValueType;
-                    d.NullableValueSimpleMap = s.NullableValueType;
-                    d.NullableValueMapWithStaticFallback = s.NullableValueType ?? 99;
-                    d.NullableValueMapWithPropertyFallback = s.NullableValueType ?? s.NonNullableValueType;
-                    d.NullableValueType = s.NullableValueType ?? 99;
-                    d.SourceWithNullableValueTypesNullableValueType = s.NullableValueType ?? s.NonNullableValueType;
+                    MapInternal(s, d);
                     break;
                 default:
                     throw new MappingException($"Mapping from {source.GetType().Name} to {typeof(TDestination).Name} has not been configured.");
@@ -37,35 +22,60 @@ namespace AutomapGenerator
             return destination;
         }
 
+        private void MapInternal(AutomapGenerator.Generator.VerificationTests.NullFallbacks.Sources.SourceWithNullableValueTypes source, AutomapGenerator.Generator.VerificationTests.NullFallbacks.Sources.DestinationForNullableValueTypes destination)
+        {
+            destination.NonNullableRefSimpleMap = source.NonNullableRefType;
+            destination.NonNullableRefMapWithStaticFallback = source.NullableRefType ?? "test";
+            destination.NonNullableRefMapWithPropertyFallback = source.NullableRefType ?? source.NonNullableRefType;
+            destination.NullableRefSimpleMap = source.NullableRefType;
+            destination.NullableRefMapWithStaticFallback = source.NullableRefType ?? "test";
+            destination.NullableRefMapWithPropertyFallback = source.NullableRefType ?? source.NonNullableRefType;
+            destination.NullableRefType = source.NullableRefType ?? "test";
+            destination.SourceWithNullableValueTypesNullableRefType = source.NullableRefType ?? source.NonNullableRefType;
+            destination.NonNullableValueSimpleMap = source.NonNullableValueType;
+            destination.NonNullableValueMapWithStaticFallback = source.NullableValueType ?? 99;
+            destination.NonNullableValueMapWithPropertyFallback = source.NullableValueType ?? source.NonNullableValueType;
+            destination.NullableValueSimpleMap = source.NullableValueType;
+            destination.NullableValueMapWithStaticFallback = source.NullableValueType ?? 99;
+            destination.NullableValueMapWithPropertyFallback = source.NullableValueType ?? source.NonNullableValueType;
+            destination.NullableValueType = source.NullableValueType ?? 99;
+            destination.SourceWithNullableValueTypesNullableValueType = source.NullableValueType ?? source.NonNullableValueType;
+        }
+
         public global::System.Linq.IQueryable<TDestination> ProjectTo<TDestination>(global::System.Linq.IQueryable<object> source)
             where TDestination : new()
         {
             var destInstance = new TDestination();
             switch (source, destInstance)
             {
-                case (global::System.Linq.IQueryable<AutomapGenerator.Generator.VerificationTests.NullFallbacks.Sources.SourceWithNullableValueTypes> s, AutomapGenerator.Generator.VerificationTests.NullFallbacks.Sources.DestinationForNullableValueTypes):
-                    return global::System.Linq.Queryable.Cast<TDestination>(global::System.Linq.Queryable.Select(s, src => new AutomapGenerator.Generator.VerificationTests.NullFallbacks.Sources.DestinationForNullableValueTypes()
-                    {
-                        NonNullableRefSimpleMap = src.NonNullableRefType,
-                        NonNullableRefMapWithStaticFallback = src.NullableRefType != null ? src.NullableRefType : "test",
-                        NonNullableRefMapWithPropertyFallback = src.NullableRefType != null ? src.NullableRefType : src.NonNullableRefType,
-                        NullableRefSimpleMap = src.NullableRefType,
-                        NullableRefMapWithStaticFallback = src.NullableRefType != null ? src.NullableRefType : "test",
-                        NullableRefMapWithPropertyFallback = src.NullableRefType != null ? src.NullableRefType : src.NonNullableRefType,
-                        NullableRefType = src.NullableRefType != null ? src.NullableRefType : "test",
-                        SourceWithNullableValueTypesNullableRefType = src.NullableRefType != null ? src.NullableRefType : src.NonNullableRefType,
-                        NonNullableValueSimpleMap = src.NonNullableValueType,
-                        NonNullableValueMapWithStaticFallback = src.NullableValueType != null ? src.NullableValueType : 99,
-                        NonNullableValueMapWithPropertyFallback = src.NullableValueType != null ? src.NullableValueType : src.NonNullableValueType,
-                        NullableValueSimpleMap = src.NullableValueType,
-                        NullableValueMapWithStaticFallback = src.NullableValueType != null ? src.NullableValueType : 99,
-                        NullableValueMapWithPropertyFallback = src.NullableValueType != null ? src.NullableValueType : src.NonNullableValueType,
-                        NullableValueType = src.NullableValueType != null ? src.NullableValueType : 99,
-                        SourceWithNullableValueTypesNullableValueType = src.NullableValueType != null ? src.NullableValueType : src.NonNullableValueType
-                    }));
+                case (global::System.Linq.IQueryable<AutomapGenerator.Generator.VerificationTests.NullFallbacks.Sources.SourceWithNullableValueTypes> s, AutomapGenerator.Generator.VerificationTests.NullFallbacks.Sources.DestinationForNullableValueTypes d):
+                    return global::System.Linq.Queryable.Cast<TDestination>(ProjectInternal(s, d));
                 default:
                     throw new MappingException($"Mapping from {source.GetType().Name} to {typeof(TDestination).Name} has not been configured.");
             }
+        }
+
+        private global::System.Linq.IQueryable<AutomapGenerator.Generator.VerificationTests.NullFallbacks.Sources.DestinationForNullableValueTypes> ProjectInternal(global::System.Linq.IQueryable<AutomapGenerator.Generator.VerificationTests.NullFallbacks.Sources.SourceWithNullableValueTypes> sourceQueryable, AutomapGenerator.Generator.VerificationTests.NullFallbacks.Sources.DestinationForNullableValueTypes _)
+        {
+            return global::System.Linq.Queryable.Select(sourceQueryable, source => new AutomapGenerator.Generator.VerificationTests.NullFallbacks.Sources.DestinationForNullableValueTypes()
+            {
+                NonNullableRefSimpleMap = source.NonNullableRefType,
+                NonNullableRefMapWithStaticFallback = source.NullableRefType != null ? source.NullableRefType : "test",
+                NonNullableRefMapWithPropertyFallback = source.NullableRefType != null ? source.NullableRefType : source.NonNullableRefType,
+                NullableRefSimpleMap = source.NullableRefType,
+                NullableRefMapWithStaticFallback = source.NullableRefType != null ? source.NullableRefType : "test",
+                NullableRefMapWithPropertyFallback = source.NullableRefType != null ? source.NullableRefType : source.NonNullableRefType,
+                NullableRefType = source.NullableRefType != null ? source.NullableRefType : "test",
+                SourceWithNullableValueTypesNullableRefType = source.NullableRefType != null ? source.NullableRefType : source.NonNullableRefType,
+                NonNullableValueSimpleMap = source.NonNullableValueType,
+                NonNullableValueMapWithStaticFallback = source.NullableValueType != null ? source.NullableValueType : 99,
+                NonNullableValueMapWithPropertyFallback = source.NullableValueType != null ? source.NullableValueType : source.NonNullableValueType,
+                NullableValueSimpleMap = source.NullableValueType,
+                NullableValueMapWithStaticFallback = source.NullableValueType != null ? source.NullableValueType : 99,
+                NullableValueMapWithPropertyFallback = source.NullableValueType != null ? source.NullableValueType : source.NonNullableValueType,
+                NullableValueType = source.NullableValueType != null ? source.NullableValueType : 99,
+                SourceWithNullableValueTypesNullableValueType = source.NullableValueType != null ? source.NullableValueType : source.NonNullableValueType
+            });
         }
     }
 }

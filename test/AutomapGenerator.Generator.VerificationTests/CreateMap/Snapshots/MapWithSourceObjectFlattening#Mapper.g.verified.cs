@@ -13,12 +13,7 @@ namespace AutomapGenerator
             switch (source, destination)
             {
                 case (AutomapGenerator.Generator.VerificationTests.CreateMap.Sources.SourceObjWithNesting s, AutomapGenerator.Generator.VerificationTests.CreateMap.Sources.DestinationFromNestedSrc d):
-                    d.Id = s.Id;
-                    d.ChildObjDescription = s.ChildObj?.Description;
-                    d.ChildObjOtherProp = s.ChildObj?.OtherProp;
-                    d.SourceObjWithNestingChildObjDescription = s.ChildObj?.Description;
-                    d.ChildObjNestedSourceOtherProp = s.ChildObj?.OtherProp;
-                    d.NestedSourceDescription = s.NestedSource?.Description;
+                    MapInternal(s, d);
                     break;
                 default:
                     throw new MappingException($"Mapping from {source.GetType().Name} to {typeof(TDestination).Name} has not been configured.");
@@ -27,25 +22,40 @@ namespace AutomapGenerator
             return destination;
         }
 
+        private void MapInternal(AutomapGenerator.Generator.VerificationTests.CreateMap.Sources.SourceObjWithNesting source, AutomapGenerator.Generator.VerificationTests.CreateMap.Sources.DestinationFromNestedSrc destination)
+        {
+            destination.Id = source.Id;
+            destination.ChildObjDescription = source.ChildObj?.Description;
+            destination.ChildObjOtherProp = source.ChildObj?.OtherProp;
+            destination.SourceObjWithNestingChildObjDescription = source.ChildObj?.Description;
+            destination.ChildObjNestedSourceOtherProp = source.ChildObj?.OtherProp;
+            destination.NestedSourceDescription = source.NestedSource?.Description;
+        }
+
         public global::System.Linq.IQueryable<TDestination> ProjectTo<TDestination>(global::System.Linq.IQueryable<object> source)
             where TDestination : new()
         {
             var destInstance = new TDestination();
             switch (source, destInstance)
             {
-                case (global::System.Linq.IQueryable<AutomapGenerator.Generator.VerificationTests.CreateMap.Sources.SourceObjWithNesting> s, AutomapGenerator.Generator.VerificationTests.CreateMap.Sources.DestinationFromNestedSrc):
-                    return global::System.Linq.Queryable.Cast<TDestination>(global::System.Linq.Queryable.Select(s, src => new AutomapGenerator.Generator.VerificationTests.CreateMap.Sources.DestinationFromNestedSrc()
-                    {
-                        Id = src.Id,
-                        ChildObjDescription = src.ChildObj != null ? src.ChildObj.Description : null,
-                        ChildObjOtherProp = src.ChildObj != null ? src.ChildObj.OtherProp : null,
-                        SourceObjWithNestingChildObjDescription = src.ChildObj != null ? src.ChildObj.Description : null,
-                        ChildObjNestedSourceOtherProp = src.ChildObj != null ? src.ChildObj.OtherProp : null,
-                        NestedSourceDescription = src.NestedSource != null ? src.NestedSource.Description : null
-                    }));
+                case (global::System.Linq.IQueryable<AutomapGenerator.Generator.VerificationTests.CreateMap.Sources.SourceObjWithNesting> s, AutomapGenerator.Generator.VerificationTests.CreateMap.Sources.DestinationFromNestedSrc d):
+                    return global::System.Linq.Queryable.Cast<TDestination>(ProjectInternal(s, d));
                 default:
                     throw new MappingException($"Mapping from {source.GetType().Name} to {typeof(TDestination).Name} has not been configured.");
             }
+        }
+
+        private global::System.Linq.IQueryable<AutomapGenerator.Generator.VerificationTests.CreateMap.Sources.DestinationFromNestedSrc> ProjectInternal(global::System.Linq.IQueryable<AutomapGenerator.Generator.VerificationTests.CreateMap.Sources.SourceObjWithNesting> sourceQueryable, AutomapGenerator.Generator.VerificationTests.CreateMap.Sources.DestinationFromNestedSrc _)
+        {
+            return global::System.Linq.Queryable.Select(sourceQueryable, source => new AutomapGenerator.Generator.VerificationTests.CreateMap.Sources.DestinationFromNestedSrc()
+            {
+                Id = source.Id,
+                ChildObjDescription = source.ChildObj != null ? source.ChildObj.Description : null,
+                ChildObjOtherProp = source.ChildObj != null ? source.ChildObj.OtherProp : null,
+                SourceObjWithNestingChildObjDescription = source.ChildObj != null ? source.ChildObj.Description : null,
+                ChildObjNestedSourceOtherProp = source.ChildObj != null ? source.ChildObj.OtherProp : null,
+                NestedSourceDescription = source.NestedSource != null ? source.NestedSource.Description : null
+            });
         }
     }
 }
