@@ -10,9 +10,6 @@ public class DestinationForNullableValueTypes : ISourceFile {
     public string? NullableRefMapWithPropertyFallback { get; set; }
     public string? NullableRefIgnored { get; set; }
 
-    public string? NullableRefType { get; set; }
-    public string? SourceWithNullableValueTypesNullableRefType { get; set; }
-
     public int NonNullableValueSimpleMap { get; set; }
     public int NonNullableValueMapWithStaticFallback { get; set; }
     public int NonNullableValueMapWithPropertyFallback { get; set; }
@@ -22,9 +19,6 @@ public class DestinationForNullableValueTypes : ISourceFile {
     public int? NullableValueMapWithStaticFallback { get; set; }
     public int? NullableValueMapWithPropertyFallback { get; set; }
     public int? NullableValueIgnored { get; set; }
-
-    public int? NullableValueType { get; set; }
-    public int? SourceWithNullableValueTypesNullableValueType { get; set; }
 
     public string GetSourceFilePath() => SourceReader.WhereAmI();
 }

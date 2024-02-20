@@ -30,16 +30,12 @@ namespace AutomapGenerator
             destination.NullableRefSimpleMap = source.NullableRefType;
             destination.NullableRefMapWithStaticFallback = source.NullableRefType ?? "test";
             destination.NullableRefMapWithPropertyFallback = source.NullableRefType ?? source.NonNullableRefType;
-            destination.NullableRefType = source.NullableRefType ?? "test";
-            destination.SourceWithNullableValueTypesNullableRefType = source.NullableRefType ?? source.NonNullableRefType;
             destination.NonNullableValueSimpleMap = source.NonNullableValueType;
             destination.NonNullableValueMapWithStaticFallback = source.NullableValueType ?? 99;
             destination.NonNullableValueMapWithPropertyFallback = source.NullableValueType ?? source.NonNullableValueType;
             destination.NullableValueSimpleMap = source.NullableValueType;
             destination.NullableValueMapWithStaticFallback = source.NullableValueType ?? 99;
             destination.NullableValueMapWithPropertyFallback = source.NullableValueType ?? source.NonNullableValueType;
-            destination.NullableValueType = source.NullableValueType ?? 99;
-            destination.SourceWithNullableValueTypesNullableValueType = source.NullableValueType ?? source.NonNullableValueType;
         }
 
         public global::System.Linq.IQueryable<TDestination> ProjectTo<TDestination>(global::System.Linq.IQueryable<object> source)
@@ -60,21 +56,17 @@ namespace AutomapGenerator
             return global::System.Linq.Queryable.Select(sourceQueryable, source => new AutomapGenerator.Generator.VerificationTests.NullFallbacks.Sources.DestinationForNullableValueTypes()
             {
                 NonNullableRefSimpleMap = source.NonNullableRefType,
-                NonNullableRefMapWithStaticFallback = source.NullableRefType != null ? source.NullableRefType : "test",
-                NonNullableRefMapWithPropertyFallback = source.NullableRefType != null ? source.NullableRefType : source.NonNullableRefType,
+                NonNullableRefMapWithStaticFallback = source.NullableRefType ?? "test",
+                NonNullableRefMapWithPropertyFallback = source.NullableRefType ?? source.NonNullableRefType,
                 NullableRefSimpleMap = source.NullableRefType,
-                NullableRefMapWithStaticFallback = source.NullableRefType != null ? source.NullableRefType : "test",
-                NullableRefMapWithPropertyFallback = source.NullableRefType != null ? source.NullableRefType : source.NonNullableRefType,
-                NullableRefType = source.NullableRefType != null ? source.NullableRefType : "test",
-                SourceWithNullableValueTypesNullableRefType = source.NullableRefType != null ? source.NullableRefType : source.NonNullableRefType,
+                NullableRefMapWithStaticFallback = source.NullableRefType ?? "test",
+                NullableRefMapWithPropertyFallback = source.NullableRefType ?? source.NonNullableRefType,
                 NonNullableValueSimpleMap = source.NonNullableValueType,
-                NonNullableValueMapWithStaticFallback = source.NullableValueType != null ? source.NullableValueType : 99,
-                NonNullableValueMapWithPropertyFallback = source.NullableValueType != null ? source.NullableValueType : source.NonNullableValueType,
+                NonNullableValueMapWithStaticFallback = source.NullableValueType ?? 99,
+                NonNullableValueMapWithPropertyFallback = source.NullableValueType ?? source.NonNullableValueType,
                 NullableValueSimpleMap = source.NullableValueType,
-                NullableValueMapWithStaticFallback = source.NullableValueType != null ? source.NullableValueType : 99,
-                NullableValueMapWithPropertyFallback = source.NullableValueType != null ? source.NullableValueType : source.NonNullableValueType,
-                NullableValueType = source.NullableValueType != null ? source.NullableValueType : 99,
-                SourceWithNullableValueTypesNullableValueType = source.NullableValueType != null ? source.NullableValueType : source.NonNullableValueType
+                NullableValueMapWithStaticFallback = source.NullableValueType ?? 99,
+                NullableValueMapWithPropertyFallback = source.NullableValueType ?? source.NonNullableValueType
             });
         }
     }

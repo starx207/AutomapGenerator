@@ -44,7 +44,7 @@ namespace AutomapGenerator
         {
             return global::System.Linq.Queryable.Select(sourceQueryable, source => new AutomapGenerator.Generator.VerificationTests.NullFallbacks.Sources.DestinationObj()
             {
-                MappedString = source.NullableString != null ? source.NullableString : "default value"
+                MappedString = source.NullableString ?? "default value"
             });
         }
     }

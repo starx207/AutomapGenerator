@@ -367,28 +367,11 @@ internal static class MapGenHelper {
         var matchedDestVarName = "destination";
 
         var expressions = new List<StatementSyntax>();
-        var destMappings = definition.GetDestinationMappings(mapping);
+        var destMappings = definition.GetDestinationMappings(mapping, matchedSrcVarName);
         for (var i = 0; i < destMappings.Count; i++) {
-            (var destProp, var srcProp, var fallback, var constFallback) = destMappings[i];
+            (var destProp, var srcProp) = destMappings[i];
 
-            ExpressionSyntax srcExpr = MemberAccessExpression(
-                SyntaxKind.SimpleMemberAccessExpression,
-                IdentifierName(matchedSrcVarName).WithLeadingTrivia(Space),
-                IdentifierName(srcProp)
-            );
-            if (fallback is not null) {
-                srcExpr = BinaryExpression(
-                    SyntaxKind.CoalesceExpression,
-                    srcExpr.WithTrailingTrivia(Space),
-                    (constFallback
-                        ? IdentifierName(fallback)
-                        : (ExpressionSyntax)MemberAccessExpression(
-                            SyntaxKind.SimpleMemberAccessExpression,
-                            IdentifierName(matchedSrcVarName),
-                            IdentifierName(fallback)))
-                    .WithLeadingTrivia(Space)
-                );
-            }
+            var srcExpr = ParseExpression(srcProp);
 
             expressions.Add(ExpressionStatement(
                 AssignmentExpression(
@@ -397,7 +380,7 @@ internal static class MapGenHelper {
                         SyntaxKind.SimpleMemberAccessExpression,
                         IdentifierName(matchedDestVarName),
                         IdentifierName(destProp).WithTrailingTrivia(Space)),
-                    srcExpr))
+                    srcExpr.WithLeadingTrivia(Space)))
                 .WithLeadingTrivia(Whitespace(indentation + INDENT))
                 .WithTrailingTrivia(CarriageReturnLineFeed));
         }
@@ -490,9 +473,9 @@ internal static class MapGenHelper {
         var lambdaVarName = "source";
 
         var expressions = new List<SyntaxNodeOrToken>();
-        var destMappings = definition.GetDestinationMappings(mapping);
+        var destMappings = definition.GetDestinationMappings(mapping, lambdaVarName);
         for (var i = 0; i < destMappings.Count; i++) {
-            (var destProp, var srcProp, var fallback, var constFallback) = destMappings[i];
+            (var destProp, var srcProp) = destMappings[i];
 
             // Add a comma after the last expression before adding another
             if (expressions.Count > 0) {
@@ -503,14 +486,7 @@ internal static class MapGenHelper {
             }
 
             var srcNullableParts = srcProp.Split(new[] { "?." }, StringSplitOptions.None);
-            ExpressionSyntax? fallbackExpr = null;
-            if (fallback is not null) {
-                fallbackExpr = constFallback
-                    ? IdentifierName(fallback)
-                    : BuildLinqExpressionWithNullChecks(lambdaVarName, fallback.Split(new[] { "?." }, StringSplitOptions.None));
-            }
-
-            var expressionRight = BuildLinqExpressionWithNullChecks(lambdaVarName, srcNullableParts, fallbackExpr);
+            var expressionRight = BuildLinqExpressionWithNullChecks(lambdaVarName, srcNullableParts/*, fallbackExpr*/);
 
             expressions.Add(
                 AssignmentExpression(
@@ -681,34 +657,18 @@ internal static class MapGenHelper {
                     .WithTrailingTrivia(CarriageReturnLineFeed)));
     }
 
-    private static ExpressionSyntax BuildLinqExpressionWithNullChecks(string lambdaVarName, string[] nullableParts, ExpressionSyntax? nullFallback = null) {
-        var memberExpr = MemberAccessExpression(
-            SyntaxKind.SimpleMemberAccessExpression,
-            IdentifierName(lambdaVarName),
-            IdentifierName(string.Join(".", nullableParts))
-        );
-
-        if (nullFallback is ConditionalExpressionSyntax) {
-            nullFallback = ParenthesizedExpression(nullFallback);
-        }
+    private static ExpressionSyntax BuildLinqExpressionWithNullChecks(string lambdaVarName, string[] nullableParts/*, ExpressionSyntax? nullFallback = null*/) {
+        var memberExpr = ParseExpression(string.Join(".", nullableParts));
 
         if (nullableParts.Length <= 1) {
-            return nullFallback is not null
-                ? ConditionalExpression(BinaryExpression(
-                    SyntaxKind.NotEqualsExpression,
-                    memberExpr.WithTrailingTrivia(Space),
-                    LiteralExpression(SyntaxKind.NullLiteralExpression).WithLeadingTrivia(Space).WithTrailingTrivia(Space)),
-                    memberExpr.WithLeadingTrivia(Space).WithTrailingTrivia(Space),
-                    nullFallback.WithLeadingTrivia(Space))
-                : memberExpr;
+            return memberExpr;
         }
 
         var binaryExpressions = new List<ExpressionSyntax>();
 
         // Do not consume the last nullable part as it is the final value
         var nullCheckIdentifier = string.Empty;
-        var offset = nullFallback is null ? 1 : 0;
-        for (var i = 0; i < nullableParts.Length - offset; i++) {
+        for (var i = 0; i < nullableParts.Length - 1; i++) {
             if (nullCheckIdentifier.Length > 0) {
                 nullCheckIdentifier += ".";
             }
@@ -716,11 +676,7 @@ internal static class MapGenHelper {
 
             binaryExpressions.Add(BinaryExpression(
                 SyntaxKind.NotEqualsExpression,
-                MemberAccessExpression(
-                    SyntaxKind.SimpleMemberAccessExpression,
-                    IdentifierName(lambdaVarName),
-                    IdentifierName(nullCheckIdentifier)
-                ).WithTrailingTrivia(Space),
+                ParseExpression(nullCheckIdentifier).WithTrailingTrivia(Space),
                 LiteralExpression(SyntaxKind.NullLiteralExpression)
                 .WithLeadingTrivia(Space)
             ));
@@ -741,7 +697,7 @@ internal static class MapGenHelper {
         return ConditionalExpression(
             condition.WithTrailingTrivia(Space),
             memberExpr.WithLeadingTrivia(Space).WithTrailingTrivia(Space),
-            (nullFallback ?? LiteralExpression(SyntaxKind.NullLiteralExpression))
+            LiteralExpression(SyntaxKind.NullLiteralExpression)
             .WithLeadingTrivia(Space)
         );
     }

@@ -24,10 +24,10 @@ namespace AutomapGenerator
 
         private void MapInternal(AutomapGenerator.Generator.VerificationTests.NullFallbacks.Sources.SourceObj source, AutomapGenerator.Generator.VerificationTests.NullFallbacks.Sources.DestinationObjFromNested destination)
         {
-            destination.ChildObjValue = source.ChildObj?.Value ?? "something else";
-            destination.NonNullString = source.ChildObj?.Value ?? "my default";
-            destination.ChildObjOtherValue = source.ChildObj?.OtherValue ?? source.OtherNullableString;
-            destination.NullableString = source.ChildObj?.OtherValue ?? source.ChildObj?.Value;
+            destination.ChildObjValue = source.ChildObj == null || source.ChildObj.Value == null ? "something else" : source.ChildObj.Value;
+            destination.NonNullString = source.ChildObj == null || source.ChildObj.Value == null ? "my default" : source.ChildObj.Value;
+            destination.ChildObjOtherValue = source.ChildObj == null || source.ChildObj.OtherValue == null ? source.OtherNullableString : source.ChildObj.OtherValue;
+            destination.NullableString = source.ChildObj == null || source.ChildObj.OtherValue == null ? (source.ChildObj == null ? null : source.ChildObj.Value) : source.ChildObj.OtherValue;
         }
 
         public global::System.Linq.IQueryable<TDestination> ProjectTo<TDestination>(global::System.Linq.IQueryable<object> source)
@@ -47,10 +47,10 @@ namespace AutomapGenerator
         {
             return global::System.Linq.Queryable.Select(sourceQueryable, source => new AutomapGenerator.Generator.VerificationTests.NullFallbacks.Sources.DestinationObjFromNested()
             {
-                ChildObjValue = source.ChildObj != null && source.ChildObj.Value != null ? source.ChildObj.Value : "something else",
-                NonNullString = source.ChildObj != null && source.ChildObj.Value != null ? source.ChildObj.Value : "my default",
-                ChildObjOtherValue = source.ChildObj != null && source.ChildObj.OtherValue != null ? source.ChildObj.OtherValue : source.OtherNullableString,
-                NullableString = source.ChildObj != null && source.ChildObj.OtherValue != null ? source.ChildObj.OtherValue : (source.ChildObj != null ? source.ChildObj.Value : null)
+                ChildObjValue = source.ChildObj == null || source.ChildObj.Value == null ? "something else" : source.ChildObj.Value,
+                NonNullString = source.ChildObj == null || source.ChildObj.Value == null ? "my default" : source.ChildObj.Value,
+                ChildObjOtherValue = source.ChildObj == null || source.ChildObj.OtherValue == null ? source.OtherNullableString : source.ChildObj.OtherValue,
+                NullableString = source.ChildObj == null || source.ChildObj.OtherValue == null ? (source.ChildObj == null ? null : source.ChildObj.Value) : source.ChildObj.OtherValue
             });
         }
     }

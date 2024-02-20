@@ -245,11 +245,8 @@ internal static class MapDefinitionHelper {
 
             // Check if we have an explicit mapping
             if (TryGetMapFromInvocation(args[1].Expression, out var mapFromInvocation)) {
-                if (TryGetExplicitMapping(mapFromInvocation, out var explicitMapping, out var fallbackMapping, out var constFallback)) {
-                    customMappings[destinationProp] = new MappingCustomization(
-                        explicitMapping: explicitMapping,
-                        fallbackMapping: fallbackMapping,
-                        constFallback: constFallback);
+                if (TryGetExplicitMapping(mapFromInvocation, out var lambdaExpr)) {
+                    customMappings[destinationProp] = new MappingCustomization(lambdaMapping: lambdaExpr);
                 }
                 continue;
             }
@@ -277,57 +274,13 @@ internal static class MapDefinitionHelper {
         return false;
     }
 
-    private static bool TryGetExplicitMapping(InvocationExpressionSyntax mapFromInvocation, [NotNullWhen(true)] out char[]? mapping, out char[]? fallbackMapping, out bool fallbackIsConstant) {
-        fallbackMapping = null;
-        fallbackIsConstant = true;
-        if (mapFromInvocation.ArgumentList.Arguments[0].Expression is not SimpleLambdaExpressionSyntax lambdaExpr) {
-            mapping = null;
+    private static bool TryGetExplicitMapping(InvocationExpressionSyntax mapFromInvocation, [NotNullWhen(true)] out SimpleLambdaExpressionSyntax? lambdaExpr) {
+        if (mapFromInvocation.ArgumentList.Arguments[0].Expression is not SimpleLambdaExpressionSyntax lambda) {
+            lambdaExpr = null;
             return false;
         }
-
-        // TODO: If I want to add support for more robust expressions,
-        //       I could use this. However, it would require a lot of other changes
-        //       to accomodate expressions beyond simple member access due to the lambda
-        //       parameter name.
-        //mapping = lambdaExpr.Body.ToFullString();
-
-        if (GetSourceMemberPathFromLambda(lambdaExpr) is { Length: > 0 } path) {
-            mapping = path;
-        } else {
-            mapping = null;
-            return false;
-        }
-
-        if (mapFromInvocation.ArgumentList.Arguments.Count > 1) {
-            var nullFallbackArg = mapFromInvocation.ArgumentList.Arguments[1].Expression;
-            if (nullFallbackArg is LiteralExpressionSyntax literalFallbackExpr) {
-                fallbackMapping = literalFallbackExpr.Token.Text.ToCharArray();
-            } else if (nullFallbackArg is SimpleLambdaExpressionSyntax lambdaFallbackExpr) {
-                if (GetSourceMemberPathFromLambda(lambdaFallbackExpr) is { Length: > 0 } fallbackPath) {
-                    fallbackMapping = fallbackPath;
-                    fallbackIsConstant = false;
-                }
-            }
-        }
-
+        lambdaExpr = lambda;
         return true;
-    }
-
-    private static char[]? GetSourceMemberPathFromLambda(SimpleLambdaExpressionSyntax lambdaExpr) {
-        var srcMemberChain = new List<string>();
-        var srcExpression = lambdaExpr.Body as MemberAccessExpressionSyntax;
-        while (srcExpression is not null) {
-            srcMemberChain.Insert(0, srcExpression.Name.Identifier.Text);
-            srcExpression = (
-                srcExpression.Expression is PostfixUnaryExpressionSyntax postUnaryExpression && postUnaryExpression.IsKind(SyntaxKind.SuppressNullableWarningExpression)
-                ? postUnaryExpression.Operand
-                : srcExpression.Expression
-            ) as MemberAccessExpressionSyntax;
-        }
-
-        return srcMemberChain.Count == 0
-            ? null
-            : string.Join(".", srcMemberChain).ToCharArray();
     }
 
     private static ITypeSymbol GetTypeSymbol(SemanticModel semanticModel, ExpressionSyntax sourceType, CancellationToken token)

@@ -25,8 +25,7 @@ namespace AutomapGenerator
         private void MapInternal(AutomapGenerator.Generator.VerificationTests.CreateMap.Sources.SourceObjWithDeepNesting source, AutomapGenerator.Generator.VerificationTests.CreateMap.Sources.DestinationFromDeepNestedSrc destination)
         {
             destination.Level1Level2Description = source.Level1?.Level2?.Description;
-            destination.ExplicitlyMappedValue = source.Level1?.Level2?.Description;
-            destination.OtherExplicitValue = source.Level1?.Level2?.Description;
+            destination.ExplicitlyMappedValue = source.Level1 != null && source.Level1.Level2 != null ? source.Level1.Level2.Description : null;
         }
 
         public global::System.Linq.IQueryable<TDestination> ProjectTo<TDestination>(global::System.Linq.IQueryable<object> source)
@@ -47,8 +46,7 @@ namespace AutomapGenerator
             return global::System.Linq.Queryable.Select(sourceQueryable, source => new AutomapGenerator.Generator.VerificationTests.CreateMap.Sources.DestinationFromDeepNestedSrc()
             {
                 Level1Level2Description = source.Level1 != null && source.Level1.Level2 != null ? source.Level1.Level2.Description : null,
-                ExplicitlyMappedValue = source.Level1 != null && source.Level1.Level2 != null ? source.Level1.Level2.Description : null,
-                OtherExplicitValue = source.Level1 != null && source.Level1.Level2 != null ? source.Level1.Level2.Description : null
+                ExplicitlyMappedValue = source.Level1 != null && source.Level1.Level2 != null ? source.Level1.Level2.Description : null
             });
         }
     }

@@ -1,5 +1,6 @@
 ﻿using System.Collections.Immutable;
 using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.CSharp;
 
 namespace AutomapGenerator.SourceGenerator.Internal;
 
@@ -8,15 +9,15 @@ internal class MapDefinition {
     public List<string> RecognizedSourcePrefixes { get; } = new();
     public List<string> RecognizedDestinationPrefixes { get; } = new();
 
-    public List<(string destProp, string srcProp, string? fallback, bool constFallback)> GetDestinationMappings(Mapping mapping) {
-        var mappings = new List<(string, string, string?, bool)>();
+    public List<(string destProp, string srcProp)> GetDestinationMappings(Mapping mapping, string sourceVarName) {
+        var mappings = new List<(string, string)>();
 
         for (var i = 0; i < mapping.WritableDestinationProperties.Length; i++) {
             var destPropName = mapping.WritableDestinationProperties[i].Name;
             if (mapping.IsIgnored(destPropName)) {
                 continue;
             }
-            if (mapping.TryGetExplicitMapping(ref mappings, destPropName)) {
+            if (mapping.TryGetExplicitMapping(ref mappings, destPropName, sourceVarName)) {
                 continue;
             }
 
@@ -36,15 +37,15 @@ internal class MapDefinition {
                 }
 
                 // Match the name exactly as-is
-                if (mapping.TryAddMatching(ref mappings, destPropName, p => p.Name == unprefixedDestPropName)) {
+                if (mapping.TryAddMatching(ref mappings, destPropName, p => p.Name == unprefixedDestPropName, sourceVarName)) {
                     break;
                 }
                 // Match the name with the Source type-name as a prefix
-                if (mapping.TryAddMatching(ref mappings, destPropName, p => p.ContainingType.Name + p.Name == unprefixedDestPropName)) {
+                if (mapping.TryAddMatching(ref mappings, destPropName, p => p.ContainingType.Name + p.Name == unprefixedDestPropName, sourceVarName)) {
                     break;
                 }
                 // Match the name with one of the recoginzed source prefixes
-                if (mapping.TryAddMatching(ref mappings, destPropName, p => RecognizedSourcePrefixes.Any(prefix => p.Name == prefix + unprefixedDestPropName))) {
+                if (mapping.TryAddMatching(ref mappings, destPropName, p => RecognizedSourcePrefixes.Any(prefix => p.Name == prefix + unprefixedDestPropName), sourceVarName)) {
                     break;
                 }
                 mapped = false;
@@ -53,7 +54,7 @@ internal class MapDefinition {
             if (mapped) {
                 continue;
             }
-            if (mapping.TryAddFlattened(ref mappings, destPropName, RecognizedSourcePrefixes, RecognizedDestinationPrefixes)) {
+            if (mapping.TryAddFlattened(ref mappings, destPropName, RecognizedSourcePrefixes, RecognizedDestinationPrefixes, sourceVarName)) {
                 continue;
             }
         }
@@ -65,44 +66,32 @@ internal class MapDefinition {
         string DestinationName, ImmutableArray<IPropertySymbol> WritableDestinationProperties, bool ProjectionOnly,
         Dictionary<string, MappingCustomization> CustomMappings) {
 
-        public bool TryGetExplicitMapping(ref List<(string, string, string?, bool)> mappings, string destPropName) {
-            if (CustomMappings.TryGetValue(destPropName, out var customMapping) && customMapping.ExplicitMapping.Length > 0) {
-                var nameParts = SplitNameByConvention(customMapping.ExplicitMapping);
-                var matchedPath = FindPropertyPath(SourceProperties, nameParts);
-                if (matchedPath is not null) {
-                    var fallback = TryGetFallbackMapping(customMapping);
-                    mappings.Add((destPropName, matchedPath, fallback, customMapping.ConstFallback));
-                    return true;
-                }
+        public bool TryGetExplicitMapping(ref List<(string, string)> mappings, string destPropName, string sourceVarName) {
+            if (CustomMappings.TryGetValue(destPropName, out var customMapping) && customMapping.LambdaMapping is { } explicitLambdaExpr) {
+                var oldParam = explicitLambdaExpr.Parameter;
+                var newParam = SyntaxFactory.Parameter(SyntaxFactory.Identifier(sourceVarName));
+                var rewriter = new ParameterRewriter(oldParam.Identifier, newParam.Identifier);
+                var rewrittenBody = rewriter.Visit(explicitLambdaExpr.Body);
+                mappings.Add((destPropName, rewrittenBody.ToFullString()));
+                return true;
             }
-            return false;
-        }
 
-        private string? TryGetFallbackMapping(MappingCustomization customMapping) {
-            if (customMapping.FallbackMapping.Length == 0) {
-                return null;
-            }
-            if (customMapping.ConstFallback) {
-                return new string(customMapping.FallbackMapping);
-            } else {
-                var nameParts = SplitNameByConvention(customMapping.FallbackMapping);
-                return FindPropertyPath(SourceProperties, nameParts);
-            }
+            return false;
         }
 
         public bool IsIgnored(string destPropName)
             => CustomMappings.TryGetValue(destPropName, out var mapping) && mapping.Ignore;
 
-        public bool TryAddMatching(ref List<(string, string, string?, bool)> mappings, string destPropName, Func<IPropertySymbol, bool> predicate) {
+        public bool TryAddMatching(ref List<(string, string)> mappings, string destPropName, Func<IPropertySymbol, bool> predicate, string sourceVarName) {
             var srcPropName = SourceProperties.SingleOrDefault(predicate)?.Name;
             if (srcPropName is not null) {
-                mappings.Add((destPropName, srcPropName, null, false));
+                mappings.Add((destPropName, $"{sourceVarName}.{srcPropName}"));
                 return true;
             }
             return false;
         }
 
-        public bool TryAddFlattened(ref List<(string, string, string?, bool)> mappings, string destPropName, IEnumerable<string> recognizedSourcePrefixes, List<string> recognizedDestinationPrefixes) {
+        public bool TryAddFlattened(ref List<(string, string)> mappings, string destPropName, IEnumerable<string> recognizedSourcePrefixes, List<string> recognizedDestinationPrefixes, string sourceVarName) {
             var nameParts = SplitNameByConvention(destPropName);
             var sourcePrefixPaths = recognizedSourcePrefixes.Select(SplitNameByConvention).ToArray();
             var matchedPath = FindPropertyPath(SourceProperties, nameParts, sourcePrefixPaths);
@@ -119,14 +108,11 @@ internal class MapDefinition {
             }
 
             if (matchedPath is not null) {
-                mappings.Add((destPropName, matchedPath, null, false));
+                mappings.Add((destPropName, $"{sourceVarName}.{matchedPath}"));
                 return true;
             }
             return false;
         }
-
-        private static string? FindPropertyPath(IEnumerable<IPropertySymbol> properties, string[] path)
-            => FindPropertyPath(properties, new ArraySegment<string>(path), Array.Empty<string[]>());
 
         private static string? FindPropertyPath(IEnumerable<IPropertySymbol> properties, string[] path, string[][] sourcePrefixPaths)
             => FindPropertyPath(properties, new ArraySegment<string>(path), sourcePrefixPaths);
