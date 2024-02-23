@@ -10,8 +10,6 @@ namespace AutomapGenerator
         {
             switch (source, typeof(TDestination))
             {
-                case (AutomapGenerator.Generator.VerificationTests.CreateMap.Sources.SourceWithReadonlyProp s, System.Type t) when t == typeof(AutomapGenerator.Generator.VerificationTests.CreateMap.Sources.FullDestinationObj):
-                    return (dynamic)MapInternal(s, new AutomapGenerator.Generator.VerificationTests.CreateMap.Sources.FullDestinationObj());
                 default:
                     throw new MappingException($"Mapping from {source.GetType().Name} to new {typeof(TDestination).Name} has not been configured.");
             }
@@ -21,22 +19,9 @@ namespace AutomapGenerator
         {
             switch (source, destination)
             {
-                case (AutomapGenerator.Generator.VerificationTests.CreateMap.Sources.SourceWithReadonlyProp s, AutomapGenerator.Generator.VerificationTests.CreateMap.Sources.FullDestinationObj d):
-                    MapInternal(s, d);
-                    break;
                 default:
                     throw new MappingException($"Mapping from {source.GetType().Name} to existing {typeof(TDestination).Name} has not been configured.");
             }
-
-            return destination;
-        }
-
-        private AutomapGenerator.Generator.VerificationTests.CreateMap.Sources.FullDestinationObj MapInternal(AutomapGenerator.Generator.VerificationTests.CreateMap.Sources.SourceWithReadonlyProp source, AutomapGenerator.Generator.VerificationTests.CreateMap.Sources.FullDestinationObj destination)
-        {
-            destination.Id = source.Id;
-            destination.Type = source.Type;
-            destination.Timestamp = source.Timestamp;
-            destination.InUse = source.InUse;
 
             return destination;
         }
@@ -45,25 +30,32 @@ namespace AutomapGenerator
         {
             switch (source)
             {
-                case global::System.Linq.IQueryable<AutomapGenerator.Generator.VerificationTests.CreateMap.Sources.SourceWithReadonlyProp> s:
+                case global::System.Linq.IQueryable<AutomapGenerator.Generator.VerificationTests.CreateProjection.Sources.ProjectionSource> s:
                     return ProjectInternal<TDestination>(s);
                 default:
                     throw new MappingException($"Mapping from {source.GetType().Name} to new {typeof(TDestination).Name} has not been configured.");
             }
         }
 
-        private global::System.Linq.IQueryable<TDestination> ProjectInternal<TDestination>(global::System.Linq.IQueryable<AutomapGenerator.Generator.VerificationTests.CreateMap.Sources.SourceWithReadonlyProp> sourceQueryable)
+        private global::System.Linq.IQueryable<TDestination> ProjectInternal<TDestination>(global::System.Linq.IQueryable<AutomapGenerator.Generator.VerificationTests.CreateProjection.Sources.ProjectionSource> sourceQueryable)
         {
             switch (typeof(TDestination))
             {
-                case System.Type t when t == typeof(AutomapGenerator.Generator.VerificationTests.CreateMap.Sources.FullDestinationObj):
+                case System.Type t when t == typeof(AutomapGenerator.Generator.VerificationTests.CreateProjection.Sources.ProjectionDestination):
                     return global::System.Linq.Queryable.Cast<TDestination>(
-                        global::System.Linq.Queryable.Select(sourceQueryable, source => new AutomapGenerator.Generator.VerificationTests.CreateMap.Sources.FullDestinationObj()
+                        global::System.Linq.Queryable.Select(sourceQueryable, source => new AutomapGenerator.Generator.VerificationTests.CreateProjection.Sources.ProjectionDestination()
                         {
                             Id = source.Id,
                             Type = source.Type,
                             Timestamp = source.Timestamp,
                             InUse = source.InUse
+                        }));
+                case System.Type t when t == typeof(AutomapGenerator.Generator.VerificationTests.CreateProjection.Sources.AlternateDestination):
+                    return global::System.Linq.Queryable.Cast<TDestination>(
+                        global::System.Linq.Queryable.Select(sourceQueryable, source => new AutomapGenerator.Generator.VerificationTests.CreateProjection.Sources.AlternateDestination()
+                        {
+                            Id = source.Id,
+                            Type = source.Type
                         }));
                 default:
                     throw new MappingException($"Mapping from {sourceQueryable.GetType().Name} to new {typeof(TDestination).Name} has not been configured.");

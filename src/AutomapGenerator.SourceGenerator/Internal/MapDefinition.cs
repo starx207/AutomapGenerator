@@ -5,9 +5,33 @@ using Microsoft.CodeAnalysis.CSharp;
 namespace AutomapGenerator.SourceGenerator.Internal;
 
 internal class MapDefinition {
-    public List<Mapping> Mappings { get; } = new();
+    private readonly List<Mapping> _allMappings = new();
+    private readonly Dictionary<string, List<Mapping>> _mappingsBySource = new();
+
+    public IReadOnlyList<Mapping> Mappings => _allMappings;
+    public IReadOnlyDictionary<string, List<Mapping>> MappingsBySource => _mappingsBySource;
     public List<string> RecognizedSourcePrefixes { get; } = new();
     public List<string> RecognizedDestinationPrefixes { get; } = new();
+
+    public void RemoveMappingAt(int index) {
+        var mappingToRemove = _allMappings[index];
+        _allMappings.Remove(mappingToRemove);
+        _mappingsBySource[mappingToRemove.SourceName].Remove(mappingToRemove);
+    }
+
+    public void AddMappings(List<Mapping> mappings) {
+        for (var i = 0; i < mappings.Count; i++) {
+            AddMapping(mappings[i]);
+        }
+    }
+
+    public void AddMapping(Mapping mapping) {
+        _allMappings.Add(mapping);
+        if (!_mappingsBySource.ContainsKey(mapping.SourceName)) {
+            _mappingsBySource[mapping.SourceName] = new();
+        }
+        _mappingsBySource[mapping.SourceName].Add(mapping);
+    }
 
     public List<(string destProp, string srcProp)> GetDestinationMappings(Mapping mapping, string sourceVarName) {
         var mappings = new List<(string, string)>();

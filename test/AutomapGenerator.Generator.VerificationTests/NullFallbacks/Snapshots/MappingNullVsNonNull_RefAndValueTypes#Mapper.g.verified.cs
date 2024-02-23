@@ -7,7 +7,16 @@ namespace AutomapGenerator
     public class Mapper : IMapper
     {
         public TDestination Map<TDestination>(object source)
-            where TDestination : new() => Map<TDestination>(source, new TDestination());
+        {
+            switch (source, typeof(TDestination))
+            {
+                case (AutomapGenerator.Generator.VerificationTests.NullFallbacks.Sources.SourceWithNullableValueTypes s, System.Type t) when t == typeof(AutomapGenerator.Generator.VerificationTests.NullFallbacks.Sources.DestinationForNullableValueTypes):
+                    return (dynamic)MapInternal(s, new AutomapGenerator.Generator.VerificationTests.NullFallbacks.Sources.DestinationForNullableValueTypes());
+                default:
+                    throw new MappingException($"Mapping from {source.GetType().Name} to new {typeof(TDestination).Name} has not been configured.");
+            }
+        }
+
         public TDestination Map<TDestination>(object source, TDestination destination)
         {
             switch (source, destination)
@@ -16,13 +25,13 @@ namespace AutomapGenerator
                     MapInternal(s, d);
                     break;
                 default:
-                    throw new MappingException($"Mapping from {source.GetType().Name} to {typeof(TDestination).Name} has not been configured.");
+                    throw new MappingException($"Mapping from {source.GetType().Name} to existing {typeof(TDestination).Name} has not been configured.");
             }
 
             return destination;
         }
 
-        private void MapInternal(AutomapGenerator.Generator.VerificationTests.NullFallbacks.Sources.SourceWithNullableValueTypes source, AutomapGenerator.Generator.VerificationTests.NullFallbacks.Sources.DestinationForNullableValueTypes destination)
+        private AutomapGenerator.Generator.VerificationTests.NullFallbacks.Sources.DestinationForNullableValueTypes MapInternal(AutomapGenerator.Generator.VerificationTests.NullFallbacks.Sources.SourceWithNullableValueTypes source, AutomapGenerator.Generator.VerificationTests.NullFallbacks.Sources.DestinationForNullableValueTypes destination)
         {
             destination.NonNullableRefSimpleMap = source.NonNullableRefType;
             destination.NonNullableRefMapWithStaticFallback = source.NullableRefType ?? "test";
@@ -36,38 +45,45 @@ namespace AutomapGenerator
             destination.NullableValueSimpleMap = source.NullableValueType;
             destination.NullableValueMapWithStaticFallback = source.NullableValueType ?? 99;
             destination.NullableValueMapWithPropertyFallback = source.NullableValueType ?? source.NonNullableValueType;
+
+            return destination;
         }
 
         public global::System.Linq.IQueryable<TDestination> ProjectTo<TDestination>(global::System.Linq.IQueryable<object> source)
-            where TDestination : new()
         {
-            var destInstance = new TDestination();
-            switch (source, destInstance)
+            switch (source)
             {
-                case (global::System.Linq.IQueryable<AutomapGenerator.Generator.VerificationTests.NullFallbacks.Sources.SourceWithNullableValueTypes> s, AutomapGenerator.Generator.VerificationTests.NullFallbacks.Sources.DestinationForNullableValueTypes d):
-                    return global::System.Linq.Queryable.Cast<TDestination>(ProjectInternal(s, d));
+                case global::System.Linq.IQueryable<AutomapGenerator.Generator.VerificationTests.NullFallbacks.Sources.SourceWithNullableValueTypes> s:
+                    return ProjectInternal<TDestination>(s);
                 default:
-                    throw new MappingException($"Mapping from {source.GetType().Name} to {typeof(TDestination).Name} has not been configured.");
+                    throw new MappingException($"Mapping from {source.GetType().Name} to new {typeof(TDestination).Name} has not been configured.");
             }
         }
 
-        private global::System.Linq.IQueryable<AutomapGenerator.Generator.VerificationTests.NullFallbacks.Sources.DestinationForNullableValueTypes> ProjectInternal(global::System.Linq.IQueryable<AutomapGenerator.Generator.VerificationTests.NullFallbacks.Sources.SourceWithNullableValueTypes> sourceQueryable, AutomapGenerator.Generator.VerificationTests.NullFallbacks.Sources.DestinationForNullableValueTypes _)
+        private global::System.Linq.IQueryable<TDestination> ProjectInternal<TDestination>(global::System.Linq.IQueryable<AutomapGenerator.Generator.VerificationTests.NullFallbacks.Sources.SourceWithNullableValueTypes> sourceQueryable)
         {
-            return global::System.Linq.Queryable.Select(sourceQueryable, source => new AutomapGenerator.Generator.VerificationTests.NullFallbacks.Sources.DestinationForNullableValueTypes()
+            switch (typeof(TDestination))
             {
-                NonNullableRefSimpleMap = source.NonNullableRefType,
-                NonNullableRefMapWithStaticFallback = source.NullableRefType ?? "test",
-                NonNullableRefMapWithPropertyFallback = source.NullableRefType ?? source.NonNullableRefType,
-                NullableRefSimpleMap = source.NullableRefType,
-                NullableRefMapWithStaticFallback = source.NullableRefType ?? "test",
-                NullableRefMapWithPropertyFallback = source.NullableRefType ?? source.NonNullableRefType,
-                NonNullableValueSimpleMap = source.NonNullableValueType,
-                NonNullableValueMapWithStaticFallback = source.NullableValueType ?? 99,
-                NonNullableValueMapWithPropertyFallback = source.NullableValueType ?? source.NonNullableValueType,
-                NullableValueSimpleMap = source.NullableValueType,
-                NullableValueMapWithStaticFallback = source.NullableValueType ?? 99,
-                NullableValueMapWithPropertyFallback = source.NullableValueType ?? source.NonNullableValueType
-            });
+                case System.Type t when t == typeof(AutomapGenerator.Generator.VerificationTests.NullFallbacks.Sources.DestinationForNullableValueTypes):
+                    return global::System.Linq.Queryable.Cast<TDestination>(
+                        global::System.Linq.Queryable.Select(sourceQueryable, source => new AutomapGenerator.Generator.VerificationTests.NullFallbacks.Sources.DestinationForNullableValueTypes()
+                        {
+                            NonNullableRefSimpleMap = source.NonNullableRefType,
+                            NonNullableRefMapWithStaticFallback = source.NullableRefType ?? "test",
+                            NonNullableRefMapWithPropertyFallback = source.NullableRefType ?? source.NonNullableRefType,
+                            NullableRefSimpleMap = source.NullableRefType,
+                            NullableRefMapWithStaticFallback = source.NullableRefType ?? "test",
+                            NullableRefMapWithPropertyFallback = source.NullableRefType ?? source.NonNullableRefType,
+                            NonNullableValueSimpleMap = source.NonNullableValueType,
+                            NonNullableValueMapWithStaticFallback = source.NullableValueType ?? 99,
+                            NonNullableValueMapWithPropertyFallback = source.NullableValueType ?? source.NonNullableValueType,
+                            NullableValueSimpleMap = source.NullableValueType,
+                            NullableValueMapWithStaticFallback = source.NullableValueType ?? 99,
+                            NullableValueMapWithPropertyFallback = source.NullableValueType ?? source.NonNullableValueType
+                        }));
+                default:
+                    throw new MappingException($"Mapping from {sourceQueryable.GetType().Name} to new {typeof(TDestination).Name} has not been configured.");
+            }
         }
     }
 }

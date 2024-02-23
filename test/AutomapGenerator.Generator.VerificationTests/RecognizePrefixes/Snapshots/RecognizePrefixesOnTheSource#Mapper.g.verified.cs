@@ -7,7 +7,16 @@ namespace AutomapGenerator
     public class Mapper : IMapper
     {
         public TDestination Map<TDestination>(object source)
-            where TDestination : new() => Map<TDestination>(source, new TDestination());
+        {
+            switch (source, typeof(TDestination))
+            {
+                case (AutomapGenerator.Generator.VerificationTests.RecognizePrefixes.Sources.SourceWithMultiplePrefixes s, System.Type t) when t == typeof(AutomapGenerator.Generator.VerificationTests.RecognizePrefixes.Sources.UnprefixedObject):
+                    return (dynamic)MapInternal(s, new AutomapGenerator.Generator.VerificationTests.RecognizePrefixes.Sources.UnprefixedObject());
+                default:
+                    throw new MappingException($"Mapping from {source.GetType().Name} to new {typeof(TDestination).Name} has not been configured.");
+            }
+        }
+
         public TDestination Map<TDestination>(object source, TDestination destination)
         {
             switch (source, destination)
@@ -16,42 +25,49 @@ namespace AutomapGenerator
                     MapInternal(s, d);
                     break;
                 default:
-                    throw new MappingException($"Mapping from {source.GetType().Name} to {typeof(TDestination).Name} has not been configured.");
+                    throw new MappingException($"Mapping from {source.GetType().Name} to existing {typeof(TDestination).Name} has not been configured.");
             }
 
             return destination;
         }
 
-        private void MapInternal(AutomapGenerator.Generator.VerificationTests.RecognizePrefixes.Sources.SourceWithMultiplePrefixes source, AutomapGenerator.Generator.VerificationTests.RecognizePrefixes.Sources.UnprefixedObject destination)
+        private AutomapGenerator.Generator.VerificationTests.RecognizePrefixes.Sources.UnprefixedObject MapInternal(AutomapGenerator.Generator.VerificationTests.RecognizePrefixes.Sources.SourceWithMultiplePrefixes source, AutomapGenerator.Generator.VerificationTests.RecognizePrefixes.Sources.UnprefixedObject destination)
         {
             destination.Id = source.TestPrefixId;
             destination.Type = source.OtherType;
             destination.Timestamp = source.RestTimestamp;
             destination.InUse = source.RestInUse;
+
+            return destination;
         }
 
         public global::System.Linq.IQueryable<TDestination> ProjectTo<TDestination>(global::System.Linq.IQueryable<object> source)
-            where TDestination : new()
         {
-            var destInstance = new TDestination();
-            switch (source, destInstance)
+            switch (source)
             {
-                case (global::System.Linq.IQueryable<AutomapGenerator.Generator.VerificationTests.RecognizePrefixes.Sources.SourceWithMultiplePrefixes> s, AutomapGenerator.Generator.VerificationTests.RecognizePrefixes.Sources.UnprefixedObject d):
-                    return global::System.Linq.Queryable.Cast<TDestination>(ProjectInternal(s, d));
+                case global::System.Linq.IQueryable<AutomapGenerator.Generator.VerificationTests.RecognizePrefixes.Sources.SourceWithMultiplePrefixes> s:
+                    return ProjectInternal<TDestination>(s);
                 default:
-                    throw new MappingException($"Mapping from {source.GetType().Name} to {typeof(TDestination).Name} has not been configured.");
+                    throw new MappingException($"Mapping from {source.GetType().Name} to new {typeof(TDestination).Name} has not been configured.");
             }
         }
 
-        private global::System.Linq.IQueryable<AutomapGenerator.Generator.VerificationTests.RecognizePrefixes.Sources.UnprefixedObject> ProjectInternal(global::System.Linq.IQueryable<AutomapGenerator.Generator.VerificationTests.RecognizePrefixes.Sources.SourceWithMultiplePrefixes> sourceQueryable, AutomapGenerator.Generator.VerificationTests.RecognizePrefixes.Sources.UnprefixedObject _)
+        private global::System.Linq.IQueryable<TDestination> ProjectInternal<TDestination>(global::System.Linq.IQueryable<AutomapGenerator.Generator.VerificationTests.RecognizePrefixes.Sources.SourceWithMultiplePrefixes> sourceQueryable)
         {
-            return global::System.Linq.Queryable.Select(sourceQueryable, source => new AutomapGenerator.Generator.VerificationTests.RecognizePrefixes.Sources.UnprefixedObject()
+            switch (typeof(TDestination))
             {
-                Id = source.TestPrefixId,
-                Type = source.OtherType,
-                Timestamp = source.RestTimestamp,
-                InUse = source.RestInUse
-            });
+                case System.Type t when t == typeof(AutomapGenerator.Generator.VerificationTests.RecognizePrefixes.Sources.UnprefixedObject):
+                    return global::System.Linq.Queryable.Cast<TDestination>(
+                        global::System.Linq.Queryable.Select(sourceQueryable, source => new AutomapGenerator.Generator.VerificationTests.RecognizePrefixes.Sources.UnprefixedObject()
+                        {
+                            Id = source.TestPrefixId,
+                            Type = source.OtherType,
+                            Timestamp = source.RestTimestamp,
+                            InUse = source.RestInUse
+                        }));
+                default:
+                    throw new MappingException($"Mapping from {sourceQueryable.GetType().Name} to new {typeof(TDestination).Name} has not been configured.");
+            }
         }
     }
 }

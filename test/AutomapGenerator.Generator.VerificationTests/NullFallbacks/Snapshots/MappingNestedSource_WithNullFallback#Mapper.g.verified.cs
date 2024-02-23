@@ -7,7 +7,16 @@ namespace AutomapGenerator
     public class Mapper : IMapper
     {
         public TDestination Map<TDestination>(object source)
-            where TDestination : new() => Map<TDestination>(source, new TDestination());
+        {
+            switch (source, typeof(TDestination))
+            {
+                case (AutomapGenerator.Generator.VerificationTests.NullFallbacks.Sources.SourceObj s, System.Type t) when t == typeof(AutomapGenerator.Generator.VerificationTests.NullFallbacks.Sources.DestinationObjFromNested):
+                    return (dynamic)MapInternal(s, new AutomapGenerator.Generator.VerificationTests.NullFallbacks.Sources.DestinationObjFromNested());
+                default:
+                    throw new MappingException($"Mapping from {source.GetType().Name} to new {typeof(TDestination).Name} has not been configured.");
+            }
+        }
+
         public TDestination Map<TDestination>(object source, TDestination destination)
         {
             switch (source, destination)
@@ -16,42 +25,49 @@ namespace AutomapGenerator
                     MapInternal(s, d);
                     break;
                 default:
-                    throw new MappingException($"Mapping from {source.GetType().Name} to {typeof(TDestination).Name} has not been configured.");
+                    throw new MappingException($"Mapping from {source.GetType().Name} to existing {typeof(TDestination).Name} has not been configured.");
             }
 
             return destination;
         }
 
-        private void MapInternal(AutomapGenerator.Generator.VerificationTests.NullFallbacks.Sources.SourceObj source, AutomapGenerator.Generator.VerificationTests.NullFallbacks.Sources.DestinationObjFromNested destination)
+        private AutomapGenerator.Generator.VerificationTests.NullFallbacks.Sources.DestinationObjFromNested MapInternal(AutomapGenerator.Generator.VerificationTests.NullFallbacks.Sources.SourceObj source, AutomapGenerator.Generator.VerificationTests.NullFallbacks.Sources.DestinationObjFromNested destination)
         {
             destination.ChildObjValue = source.ChildObj == null || source.ChildObj.Value == null ? "something else" : source.ChildObj.Value;
             destination.NonNullString = source.ChildObj == null || source.ChildObj.Value == null ? "my default" : source.ChildObj.Value;
             destination.ChildObjOtherValue = source.ChildObj == null || source.ChildObj.OtherValue == null ? source.OtherNullableString : source.ChildObj.OtherValue;
             destination.NullableString = source.ChildObj == null || source.ChildObj.OtherValue == null ? (source.ChildObj == null ? null : source.ChildObj.Value) : source.ChildObj.OtherValue;
+
+            return destination;
         }
 
         public global::System.Linq.IQueryable<TDestination> ProjectTo<TDestination>(global::System.Linq.IQueryable<object> source)
-            where TDestination : new()
         {
-            var destInstance = new TDestination();
-            switch (source, destInstance)
+            switch (source)
             {
-                case (global::System.Linq.IQueryable<AutomapGenerator.Generator.VerificationTests.NullFallbacks.Sources.SourceObj> s, AutomapGenerator.Generator.VerificationTests.NullFallbacks.Sources.DestinationObjFromNested d):
-                    return global::System.Linq.Queryable.Cast<TDestination>(ProjectInternal(s, d));
+                case global::System.Linq.IQueryable<AutomapGenerator.Generator.VerificationTests.NullFallbacks.Sources.SourceObj> s:
+                    return ProjectInternal<TDestination>(s);
                 default:
-                    throw new MappingException($"Mapping from {source.GetType().Name} to {typeof(TDestination).Name} has not been configured.");
+                    throw new MappingException($"Mapping from {source.GetType().Name} to new {typeof(TDestination).Name} has not been configured.");
             }
         }
 
-        private global::System.Linq.IQueryable<AutomapGenerator.Generator.VerificationTests.NullFallbacks.Sources.DestinationObjFromNested> ProjectInternal(global::System.Linq.IQueryable<AutomapGenerator.Generator.VerificationTests.NullFallbacks.Sources.SourceObj> sourceQueryable, AutomapGenerator.Generator.VerificationTests.NullFallbacks.Sources.DestinationObjFromNested _)
+        private global::System.Linq.IQueryable<TDestination> ProjectInternal<TDestination>(global::System.Linq.IQueryable<AutomapGenerator.Generator.VerificationTests.NullFallbacks.Sources.SourceObj> sourceQueryable)
         {
-            return global::System.Linq.Queryable.Select(sourceQueryable, source => new AutomapGenerator.Generator.VerificationTests.NullFallbacks.Sources.DestinationObjFromNested()
+            switch (typeof(TDestination))
             {
-                ChildObjValue = source.ChildObj == null || source.ChildObj.Value == null ? "something else" : source.ChildObj.Value,
-                NonNullString = source.ChildObj == null || source.ChildObj.Value == null ? "my default" : source.ChildObj.Value,
-                ChildObjOtherValue = source.ChildObj == null || source.ChildObj.OtherValue == null ? source.OtherNullableString : source.ChildObj.OtherValue,
-                NullableString = source.ChildObj == null || source.ChildObj.OtherValue == null ? (source.ChildObj == null ? null : source.ChildObj.Value) : source.ChildObj.OtherValue
-            });
+                case System.Type t when t == typeof(AutomapGenerator.Generator.VerificationTests.NullFallbacks.Sources.DestinationObjFromNested):
+                    return global::System.Linq.Queryable.Cast<TDestination>(
+                        global::System.Linq.Queryable.Select(sourceQueryable, source => new AutomapGenerator.Generator.VerificationTests.NullFallbacks.Sources.DestinationObjFromNested()
+                        {
+                            ChildObjValue = source.ChildObj == null || source.ChildObj.Value == null ? "something else" : source.ChildObj.Value,
+                            NonNullString = source.ChildObj == null || source.ChildObj.Value == null ? "my default" : source.ChildObj.Value,
+                            ChildObjOtherValue = source.ChildObj == null || source.ChildObj.OtherValue == null ? source.OtherNullableString : source.ChildObj.OtherValue,
+                            NullableString = source.ChildObj == null || source.ChildObj.OtherValue == null ? (source.ChildObj == null ? null : source.ChildObj.Value) : source.ChildObj.OtherValue
+                        }));
+                default:
+                    throw new MappingException($"Mapping from {sourceQueryable.GetType().Name} to new {typeof(TDestination).Name} has not been configured.");
+            }
         }
     }
 }

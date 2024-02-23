@@ -25,7 +25,7 @@ internal static class MapDefinitionHelper {
             for (var j = 0; j < indexesToRemove.Count; j++) {
                 var index = indexesToRemove[j];
                 if (index < adHocMapping.Mappings.Count) {
-                    adHocMapping.Mappings.RemoveAt(index);
+                    adHocMapping.RemoveMappingAt(index);
                 }
             }
             if (adHocMapping.Mappings.Count > 0) {
@@ -71,7 +71,7 @@ internal static class MapDefinitionHelper {
         }
 
         var newDef = new MapDefinition();
-        newDef.Mappings.AddRange(pruned);
+        newDef.AddMappings(pruned);
         return new[] { newDef };
     }
 
@@ -109,7 +109,7 @@ internal static class MapDefinitionHelper {
 
 
                     // Once we have the source type and destination type, we can create a map definition
-                    definition.Mappings.Add(new(
+                    definition.AddMapping(new(
                         srcSymbol.ToDisplayString(),
                         GetAllPropertySymbols(srcSymbol),
                         destSymbol.ToDisplayString(),
@@ -118,7 +118,7 @@ internal static class MapDefinitionHelper {
                         new()));
                 } else {
                     if (TryExtractCreateMapOrProjectionInvocation(invocation, compilation, token, out var mapOrProjection)) {
-                        definition.Mappings.Add(ConvertToMapping(mapOrProjection, token));
+                        definition.AddMapping(ConvertToMapping(mapOrProjection, token));
                         continue;
                     }
 

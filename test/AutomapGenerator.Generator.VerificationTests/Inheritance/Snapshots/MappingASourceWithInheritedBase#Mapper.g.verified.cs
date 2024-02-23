@@ -7,7 +7,16 @@ namespace AutomapGenerator
     public class Mapper : IMapper
     {
         public TDestination Map<TDestination>(object source)
-            where TDestination : new() => Map<TDestination>(source, new TDestination());
+        {
+            switch (source, typeof(TDestination))
+            {
+                case (AutomapGenerator.Generator.VerificationTests.Inheritance.Sources.DerivedSource s, System.Type t) when t == typeof(AutomapGenerator.Generator.VerificationTests.Inheritance.Sources.Destination):
+                    return (dynamic)MapInternal(s, new AutomapGenerator.Generator.VerificationTests.Inheritance.Sources.Destination());
+                default:
+                    throw new MappingException($"Mapping from {source.GetType().Name} to new {typeof(TDestination).Name} has not been configured.");
+            }
+        }
+
         public TDestination Map<TDestination>(object source, TDestination destination)
         {
             switch (source, destination)
@@ -16,40 +25,47 @@ namespace AutomapGenerator
                     MapInternal(s, d);
                     break;
                 default:
-                    throw new MappingException($"Mapping from {source.GetType().Name} to {typeof(TDestination).Name} has not been configured.");
+                    throw new MappingException($"Mapping from {source.GetType().Name} to existing {typeof(TDestination).Name} has not been configured.");
             }
 
             return destination;
         }
 
-        private void MapInternal(AutomapGenerator.Generator.VerificationTests.Inheritance.Sources.DerivedSource source, AutomapGenerator.Generator.VerificationTests.Inheritance.Sources.Destination destination)
+        private AutomapGenerator.Generator.VerificationTests.Inheritance.Sources.Destination MapInternal(AutomapGenerator.Generator.VerificationTests.Inheritance.Sources.DerivedSource source, AutomapGenerator.Generator.VerificationTests.Inheritance.Sources.Destination destination)
         {
             destination.Id = source.Id;
             destination.CreateUserID = source.CreateUserID;
             destination.CreateDate = source.CreateDate;
+
+            return destination;
         }
 
         public global::System.Linq.IQueryable<TDestination> ProjectTo<TDestination>(global::System.Linq.IQueryable<object> source)
-            where TDestination : new()
         {
-            var destInstance = new TDestination();
-            switch (source, destInstance)
+            switch (source)
             {
-                case (global::System.Linq.IQueryable<AutomapGenerator.Generator.VerificationTests.Inheritance.Sources.DerivedSource> s, AutomapGenerator.Generator.VerificationTests.Inheritance.Sources.Destination d):
-                    return global::System.Linq.Queryable.Cast<TDestination>(ProjectInternal(s, d));
+                case global::System.Linq.IQueryable<AutomapGenerator.Generator.VerificationTests.Inheritance.Sources.DerivedSource> s:
+                    return ProjectInternal<TDestination>(s);
                 default:
-                    throw new MappingException($"Mapping from {source.GetType().Name} to {typeof(TDestination).Name} has not been configured.");
+                    throw new MappingException($"Mapping from {source.GetType().Name} to new {typeof(TDestination).Name} has not been configured.");
             }
         }
 
-        private global::System.Linq.IQueryable<AutomapGenerator.Generator.VerificationTests.Inheritance.Sources.Destination> ProjectInternal(global::System.Linq.IQueryable<AutomapGenerator.Generator.VerificationTests.Inheritance.Sources.DerivedSource> sourceQueryable, AutomapGenerator.Generator.VerificationTests.Inheritance.Sources.Destination _)
+        private global::System.Linq.IQueryable<TDestination> ProjectInternal<TDestination>(global::System.Linq.IQueryable<AutomapGenerator.Generator.VerificationTests.Inheritance.Sources.DerivedSource> sourceQueryable)
         {
-            return global::System.Linq.Queryable.Select(sourceQueryable, source => new AutomapGenerator.Generator.VerificationTests.Inheritance.Sources.Destination()
+            switch (typeof(TDestination))
             {
-                Id = source.Id,
-                CreateUserID = source.CreateUserID,
-                CreateDate = source.CreateDate
-            });
+                case System.Type t when t == typeof(AutomapGenerator.Generator.VerificationTests.Inheritance.Sources.Destination):
+                    return global::System.Linq.Queryable.Cast<TDestination>(
+                        global::System.Linq.Queryable.Select(sourceQueryable, source => new AutomapGenerator.Generator.VerificationTests.Inheritance.Sources.Destination()
+                        {
+                            Id = source.Id,
+                            CreateUserID = source.CreateUserID,
+                            CreateDate = source.CreateDate
+                        }));
+                default:
+                    throw new MappingException($"Mapping from {sourceQueryable.GetType().Name} to new {typeof(TDestination).Name} has not been configured.");
+            }
         }
     }
 }

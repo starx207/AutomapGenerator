@@ -7,7 +7,18 @@ namespace AutomapGenerator
     public class Mapper : IMapper
     {
         public TDestination Map<TDestination>(object source)
-            where TDestination : new() => Map<TDestination>(source, new TDestination());
+        {
+            switch (source, typeof(TDestination))
+            {
+                case (AutomapGenerator.Generator.VerificationTests.CreateMap.Sources.SimpleSourceObj s, System.Type t) when t == typeof(AutomapGenerator.Generator.VerificationTests.CreateMap.Sources.SimpleDestinationObj):
+                    return (dynamic)MapInternal(s, new AutomapGenerator.Generator.VerificationTests.CreateMap.Sources.SimpleDestinationObj());
+                case (AutomapGenerator.Generator.VerificationTests.CreateMap.Sources.OtherSimpleSourceObj s, System.Type t) when t == typeof(AutomapGenerator.Generator.VerificationTests.CreateMap.Sources.SimpleDestinationObj):
+                    return (dynamic)MapInternal(s, new AutomapGenerator.Generator.VerificationTests.CreateMap.Sources.SimpleDestinationObj());
+                default:
+                    throw new MappingException($"Mapping from {source.GetType().Name} to new {typeof(TDestination).Name} has not been configured.");
+            }
+        }
+
         public TDestination Map<TDestination>(object source, TDestination destination)
         {
             switch (source, destination)
@@ -19,55 +30,71 @@ namespace AutomapGenerator
                     MapInternal(s, d);
                     break;
                 default:
-                    throw new MappingException($"Mapping from {source.GetType().Name} to {typeof(TDestination).Name} has not been configured.");
+                    throw new MappingException($"Mapping from {source.GetType().Name} to existing {typeof(TDestination).Name} has not been configured.");
             }
 
             return destination;
         }
 
-        private void MapInternal(AutomapGenerator.Generator.VerificationTests.CreateMap.Sources.SimpleSourceObj source, AutomapGenerator.Generator.VerificationTests.CreateMap.Sources.SimpleDestinationObj destination)
+        private AutomapGenerator.Generator.VerificationTests.CreateMap.Sources.SimpleDestinationObj MapInternal(AutomapGenerator.Generator.VerificationTests.CreateMap.Sources.SimpleSourceObj source, AutomapGenerator.Generator.VerificationTests.CreateMap.Sources.SimpleDestinationObj destination)
         {
             destination.Id = source.Id;
             destination.Type = source.Type;
+
+            return destination;
         }
 
-        private void MapInternal(AutomapGenerator.Generator.VerificationTests.CreateMap.Sources.OtherSimpleSourceObj source, AutomapGenerator.Generator.VerificationTests.CreateMap.Sources.SimpleDestinationObj destination)
+        private AutomapGenerator.Generator.VerificationTests.CreateMap.Sources.SimpleDestinationObj MapInternal(AutomapGenerator.Generator.VerificationTests.CreateMap.Sources.OtherSimpleSourceObj source, AutomapGenerator.Generator.VerificationTests.CreateMap.Sources.SimpleDestinationObj destination)
         {
             destination.Id = source.Id;
             destination.Type = source.Type;
+
+            return destination;
         }
 
         public global::System.Linq.IQueryable<TDestination> ProjectTo<TDestination>(global::System.Linq.IQueryable<object> source)
-            where TDestination : new()
         {
-            var destInstance = new TDestination();
-            switch (source, destInstance)
+            switch (source)
             {
-                case (global::System.Linq.IQueryable<AutomapGenerator.Generator.VerificationTests.CreateMap.Sources.SimpleSourceObj> s, AutomapGenerator.Generator.VerificationTests.CreateMap.Sources.SimpleDestinationObj d):
-                    return global::System.Linq.Queryable.Cast<TDestination>(ProjectInternal(s, d));
-                case (global::System.Linq.IQueryable<AutomapGenerator.Generator.VerificationTests.CreateMap.Sources.OtherSimpleSourceObj> s, AutomapGenerator.Generator.VerificationTests.CreateMap.Sources.SimpleDestinationObj d):
-                    return global::System.Linq.Queryable.Cast<TDestination>(ProjectInternal(s, d));
+                case global::System.Linq.IQueryable<AutomapGenerator.Generator.VerificationTests.CreateMap.Sources.SimpleSourceObj> s:
+                    return ProjectInternal<TDestination>(s);
+                case global::System.Linq.IQueryable<AutomapGenerator.Generator.VerificationTests.CreateMap.Sources.OtherSimpleSourceObj> s:
+                    return ProjectInternal<TDestination>(s);
                 default:
-                    throw new MappingException($"Mapping from {source.GetType().Name} to {typeof(TDestination).Name} has not been configured.");
+                    throw new MappingException($"Mapping from {source.GetType().Name} to new {typeof(TDestination).Name} has not been configured.");
             }
         }
 
-        private global::System.Linq.IQueryable<AutomapGenerator.Generator.VerificationTests.CreateMap.Sources.SimpleDestinationObj> ProjectInternal(global::System.Linq.IQueryable<AutomapGenerator.Generator.VerificationTests.CreateMap.Sources.SimpleSourceObj> sourceQueryable, AutomapGenerator.Generator.VerificationTests.CreateMap.Sources.SimpleDestinationObj _)
+        private global::System.Linq.IQueryable<TDestination> ProjectInternal<TDestination>(global::System.Linq.IQueryable<AutomapGenerator.Generator.VerificationTests.CreateMap.Sources.SimpleSourceObj> sourceQueryable)
         {
-            return global::System.Linq.Queryable.Select(sourceQueryable, source => new AutomapGenerator.Generator.VerificationTests.CreateMap.Sources.SimpleDestinationObj()
+            switch (typeof(TDestination))
             {
-                Id = source.Id,
-                Type = source.Type
-            });
+                case System.Type t when t == typeof(AutomapGenerator.Generator.VerificationTests.CreateMap.Sources.SimpleDestinationObj):
+                    return global::System.Linq.Queryable.Cast<TDestination>(
+                        global::System.Linq.Queryable.Select(sourceQueryable, source => new AutomapGenerator.Generator.VerificationTests.CreateMap.Sources.SimpleDestinationObj()
+                        {
+                            Id = source.Id,
+                            Type = source.Type
+                        }));
+                default:
+                    throw new MappingException($"Mapping from {sourceQueryable.GetType().Name} to new {typeof(TDestination).Name} has not been configured.");
+            }
         }
 
-        private global::System.Linq.IQueryable<AutomapGenerator.Generator.VerificationTests.CreateMap.Sources.SimpleDestinationObj> ProjectInternal(global::System.Linq.IQueryable<AutomapGenerator.Generator.VerificationTests.CreateMap.Sources.OtherSimpleSourceObj> sourceQueryable, AutomapGenerator.Generator.VerificationTests.CreateMap.Sources.SimpleDestinationObj _)
+        private global::System.Linq.IQueryable<TDestination> ProjectInternal<TDestination>(global::System.Linq.IQueryable<AutomapGenerator.Generator.VerificationTests.CreateMap.Sources.OtherSimpleSourceObj> sourceQueryable)
         {
-            return global::System.Linq.Queryable.Select(sourceQueryable, source => new AutomapGenerator.Generator.VerificationTests.CreateMap.Sources.SimpleDestinationObj()
+            switch (typeof(TDestination))
             {
-                Id = source.Id,
-                Type = source.Type
-            });
+                case System.Type t when t == typeof(AutomapGenerator.Generator.VerificationTests.CreateMap.Sources.SimpleDestinationObj):
+                    return global::System.Linq.Queryable.Cast<TDestination>(
+                        global::System.Linq.Queryable.Select(sourceQueryable, source => new AutomapGenerator.Generator.VerificationTests.CreateMap.Sources.SimpleDestinationObj()
+                        {
+                            Id = source.Id,
+                            Type = source.Type
+                        }));
+                default:
+                    throw new MappingException($"Mapping from {sourceQueryable.GetType().Name} to new {typeof(TDestination).Name} has not been configured.");
+            }
         }
     }
 }
