@@ -1,4 +1,5 @@
-﻿using Microsoft.CodeAnalysis;
+﻿using System.Diagnostics.CodeAnalysis;
+using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using static Microsoft.CodeAnalysis.CSharp.SyntaxFactory;
@@ -15,7 +16,7 @@ internal static class MapGenHelper {
 
     public static NamespaceDeclarationSyntax CreateMapperClass(MapDefinition[] sources) {
         var mapExistingMethods = CreateMapExistingMethods(INDENT + INDENT, sources);
-        var mapNewMethod = CreateMapNewMethod(mapExistingMethods, INDENT + INDENT);
+        var mapNewMethod = CreateMapNewMethod(mapExistingMethods, sources, INDENT + INDENT);
         var projectMethods = CreateProjectToMethods(INDENT + INDENT, sources);
 
         var mapperMethods = new List<MemberDeclarationSyntax> {
@@ -154,7 +155,7 @@ internal static class MapGenHelper {
                 SyntaxKind.CloseBraceToken,
                 TriviaList(CarriageReturnLineFeed)));
 
-    private static MethodDeclarationSyntax CreateMapNewMethod(List<MethodDeclarationSyntax> mapExistingMethods, string indentation) {
+    private static MethodDeclarationSyntax CreateMapNewMethod(List<MethodDeclarationSyntax> mapExistingMethods, MapDefinition[] sources, string indentation) {
         var sourceVarName = "source";
         var switchSections = new List<SwitchSectionSyntax>();
         for (var i = 0; i < mapExistingMethods.Count; i++) {
@@ -163,7 +164,7 @@ internal static class MapGenHelper {
                 continue; // This is not one of the internal map methods, so skip it
             }
 
-            switchSections.Add(CreateMapNewSwitchSection(method, indentation));
+            switchSections.Add(CreateMapNewSwitchSection(method, sources, sourceVarName, indentation));
         }
 
         switchSections.Add(CreateDefaultSwitchThrow(sourceVarName, true, indentation + INDENT + INDENT));
@@ -206,11 +207,64 @@ internal static class MapGenHelper {
 
     }
 
-    private static SwitchSectionSyntax CreateMapNewSwitchSection(MethodDeclarationSyntax mapInternalMethod, string indentation) {
+    private static MapDefinition.Mapping GetMappingFromSourceToDestination(MapDefinition[] sources, TypeSyntax sourceType, TypeSyntax destinationType) {
+        var sourceName = sourceType.ToString();
+        var destinationName = destinationType.ToString();
+
+        for (var i = 0; i < sources.Length; i++) {
+            var definition = sources[i];
+            if (definition.MappingsBySource.TryGetValue(sourceName, out var mappings)) {
+                for (var j = 0; j < mappings.Count; j++) {
+                    var mapping = mappings[j];
+                    if (mapping.DestinationName == destinationName) {
+                        return mapping;
+                    }
+                }
+            }
+        }
+        // It shouldn't be possible to get here!
+        throw new Exception("No mapping from the given source to destination found");
+    }
+
+    private static bool TryGetObjectCreationExpressionFrom(MapDefinition.Mapping mapping, [NotNullWhen(true)] out ObjectCreationExpressionSyntax? objectCreationExpression) {
+        for (var i = 0; i < mapping.DestinationConstructors.Length; i++) {
+            var ctor = mapping.DestinationConstructors[i];
+            if (ctor.Parameters.Length == 0) {
+                objectCreationExpression = ObjectCreationExpression(
+                    ParseTypeName(mapping.DestinationName)
+                    .WithLeadingTrivia(Space))
+                .WithArgumentList(ArgumentList());
+                return true;
+            }
+        }
+
+        objectCreationExpression = null;
+        return false;
+    }
+
+    private static SwitchSectionSyntax CreateMapNewSwitchSection(MethodDeclarationSyntax mapInternalMethod, MapDefinition[] sources, string sourceVarName, string indentation) {
         var sourceType = mapInternalMethod.ParameterList.Parameters[0].Type!;
         var destinationType = mapInternalMethod.ParameterList.Parameters[1].Type!;
+        var mapping = GetMappingFromSourceToDestination(sources, sourceType, destinationType);
+
         var typeMatchVarName = "t";
         var sourceMatchVarName = "s";
+
+        var switchStatement = TryGetObjectCreationExpressionFrom(mapping, out var objCreationExpr)
+            ? ReturnStatement(
+                CastExpression(
+                    IdentifierName("dynamic"),
+                    InvocationExpression(IdentifierName(mapInternalMethod.Identifier.Text))
+                    .WithArgumentList(ArgumentList(SeparatedList<ArgumentSyntax>(new SyntaxNodeOrToken[] {
+                        Argument(IdentifierName(sourceMatchVarName)),
+                        Token(
+                            TriviaList(),
+                            SyntaxKind.CommaToken,
+                            TriviaList(Space)),
+                        Argument(objCreationExpr)
+                    }))))
+                .WithLeadingTrivia(Space))
+            : (StatementSyntax)CreateConstructorMapException(sourceVarName);
 
         return SwitchSection()
             .WithLabels(SingletonList<SwitchLabelSyntax>(
@@ -255,24 +309,8 @@ internal static class MapGenHelper {
                                 .WithLeadingTrivia(Space))))
                 .WithLeadingTrivia(Whitespace(indentation + INDENT + INDENT))))
             .WithStatements(
-                SingletonList<StatementSyntax>(
-                    ReturnStatement(
-                        CastExpression(
-                            IdentifierName("dynamic"),
-                            InvocationExpression(IdentifierName(mapInternalMethod.Identifier.Text))
-                            .WithArgumentList(ArgumentList(SeparatedList<ArgumentSyntax>(new SyntaxNodeOrToken[] {
-                                Argument(IdentifierName(sourceMatchVarName)),
-                                Token(
-                                    TriviaList(),
-                                    SyntaxKind.CommaToken,
-                                    TriviaList(Space)),
-                                Argument(
-                                    // TODO: This assumes all destination types have a parameterless constructor.
-                                    //       Need to ensure this is the case before generating this code.
-                                    ObjectCreationExpression(destinationType.WithLeadingTrivia(Space))
-                                    .WithArgumentList(ArgumentList()))
-                            }))))
-                        .WithLeadingTrivia(Space))
+                SingletonList(
+                    switchStatement
                     .WithLeadingTrivia(Whitespace(indentation + INDENT + INDENT + INDENT))
                     .WithTrailingTrivia(CarriageReturnLineFeed)));
     }
@@ -359,7 +397,7 @@ internal static class MapGenHelper {
                 }
                 projectedSources.Add(source);
 
-                var projectMethod = CreateInternalProjectMethod(srcMappings, source, indentation);
+                var projectMethod = CreateInternalProjectMethod(srcMappings, source, sourceVarName, indentation);
                 internalProjectMethods.Add(projectMethod);
                 switchSections.Add(CreateProjectToMethodSwitchSection(projectMethod, indentation + INDENT + INDENT));
             }
@@ -521,7 +559,7 @@ internal static class MapGenHelper {
             }));
     }
 
-    private static MethodDeclarationSyntax CreateInternalProjectMethod(MapDefinition[] definitions, string sourceName, string indentation) {
+    private static MethodDeclarationSyntax CreateInternalProjectMethod(MapDefinition[] definitions, string sourceName, string sourceVarName, string indentation) {
         var patternMatchSrcName = WrapTypeInIQueryable(ParseTypeName(sourceName));
         var matchedSrcVarName = "sourceQueryable";
         var lambdaVarName = "source";
@@ -536,19 +574,20 @@ internal static class MapGenHelper {
             for (var j = 0; j < mappings.Count; j++) {
                 var mapping = mappings[j];
                 var patternMatchDestName = ParseTypeName(mapping.DestinationName);
-                var objectInitializerExpression = CreateProjectionObjectInitializer(definition, mapping, lambdaVarName, indentation + INDENT + INDENT + INDENT);
+                StatementSyntax switchStatement;
+                if (TryCreateProjectionObjectInitializer(definition, mapping, lambdaVarName, indentation + INDENT + INDENT + INDENT, out var objectInitializerExpression)) {
 
-                var linqSelect = InvocationExpression(
-                        MemberAccessExpression(
-                            SyntaxKind.SimpleMemberAccessExpression,
+                    var linqSelect = InvocationExpression(
                             MemberAccessExpression(
                                 SyntaxKind.SimpleMemberAccessExpression,
-                                AliasQualifiedName(
-                                    IdentifierName(Token(SyntaxKind.GlobalKeyword)),
-                                    IdentifierName(typeof(Queryable).Namespace)),
-                                IdentifierName(nameof(Queryable))),
-                            IdentifierName(Identifier(nameof(Queryable.Select)))))
-                    .WithArgumentList(ArgumentList(SeparatedList<ArgumentSyntax>(new SyntaxNodeOrToken[] {
+                                MemberAccessExpression(
+                                    SyntaxKind.SimpleMemberAccessExpression,
+                                    AliasQualifiedName(
+                                        IdentifierName(Token(SyntaxKind.GlobalKeyword)),
+                                        IdentifierName(typeof(Queryable).Namespace)),
+                                    IdentifierName(nameof(Queryable))),
+                                IdentifierName(Identifier(nameof(Queryable.Select)))))
+                        .WithArgumentList(ArgumentList(SeparatedList<ArgumentSyntax>(new SyntaxNodeOrToken[] {
                     Argument(IdentifierName(matchedSrcVarName)),
                     Token(
                         TriviaList(),
@@ -561,26 +600,31 @@ internal static class MapGenHelper {
                                 lambdaVarName,
                                 TriviaList(Space))))
                         .WithExpressionBody(objectInitializerExpression))
-                    })));
+                        })));
 
 
-                var linqCast = InvocationExpression(
-                        MemberAccessExpression(
-                            SyntaxKind.SimpleMemberAccessExpression,
+                    var linqCast = InvocationExpression(
                             MemberAccessExpression(
                                 SyntaxKind.SimpleMemberAccessExpression,
-                                AliasQualifiedName(
-                                    IdentifierName(Token(SyntaxKind.GlobalKeyword)),
-                                    IdentifierName(typeof(Queryable).Namespace)),
-                                IdentifierName(nameof(Queryable))),
-                            GenericName(Identifier(nameof(Queryable.Cast)))
-                            .WithTypeArgumentList(TypeArgumentList(
-                                SingletonSeparatedList<TypeSyntax>(
-                                    IdentifierName(GENERIC_TYPE_NAME_DESTINATION))))))
-                    .WithArgumentList(ArgumentList(SingletonSeparatedList(
-                        Argument(linqSelect)
-                        .WithLeadingTrivia(CarriageReturnLineFeed, Whitespace(indentation + INDENT + INDENT + INDENT + INDENT)))))
-                    .WithLeadingTrivia(Space);
+                                MemberAccessExpression(
+                                    SyntaxKind.SimpleMemberAccessExpression,
+                                    AliasQualifiedName(
+                                        IdentifierName(Token(SyntaxKind.GlobalKeyword)),
+                                        IdentifierName(typeof(Queryable).Namespace)),
+                                    IdentifierName(nameof(Queryable))),
+                                GenericName(Identifier(nameof(Queryable.Cast)))
+                                .WithTypeArgumentList(TypeArgumentList(
+                                    SingletonSeparatedList<TypeSyntax>(
+                                        IdentifierName(GENERIC_TYPE_NAME_DESTINATION))))))
+                        .WithArgumentList(ArgumentList(SingletonSeparatedList(
+                            Argument(linqSelect)
+                            .WithLeadingTrivia(CarriageReturnLineFeed, Whitespace(indentation + INDENT + INDENT + INDENT + INDENT)))))
+                        .WithLeadingTrivia(Space);
+
+                    switchStatement = ReturnStatement(linqCast);
+                } else {
+                    switchStatement = CreateConstructorMapException(sourceVarName);
+                }
 
                 var switchSection = SwitchSection()
                     .WithLabels(SingletonList<SwitchLabelSyntax>(
@@ -604,8 +648,8 @@ internal static class MapGenHelper {
                                     typeMatchVarName,
                                     TriviaList(Space))),
                                 TypeOfExpression(patternMatchDestName).WithLeadingTrivia(Space))))))
-                    .WithStatements(SingletonList<StatementSyntax>(
-                        ReturnStatement(linqCast)
+                    .WithStatements(SingletonList(
+                        switchStatement
                         .WithLeadingTrivia(Whitespace(indentation + INDENT + INDENT + INDENT))
                         .WithTrailingTrivia(CarriageReturnLineFeed)));
 
@@ -658,57 +702,67 @@ internal static class MapGenHelper {
                 TriviaList())));
     }
 
-    private static ObjectCreationExpressionSyntax CreateProjectionObjectInitializer(MapDefinition definition, MapDefinition.Mapping mapping, string lambdaVarName, string indentation) {
-        var patternMatchDestName = ParseTypeName(mapping.DestinationName);
-        var expressions = new List<SyntaxNodeOrToken>();
-        var destMappings = definition.GetDestinationMappings(mapping, lambdaVarName);
-        for (var i = 0; i < destMappings.Count; i++) {
-            (var destProp, var srcProp) = destMappings[i];
-
-            // Add a comma after the last expression before adding another
-            if (expressions.Count > 0) {
-                expressions.Add(Token(
-                    TriviaList(),
-                    SyntaxKind.CommaToken,
-                    TriviaList(CarriageReturnLineFeed)));
+    private static bool TryCreateProjectionObjectInitializer(MapDefinition definition, MapDefinition.Mapping mapping, string lambdaVarName, string indentation, [NotNullWhen(true)] out ObjectCreationExpressionSyntax? objectCreationExpression) {
+        for (var i = 0; i < mapping.DestinationConstructors.Length; i++) {
+            var ctor = mapping.DestinationConstructors[i];
+            if (ctor.Parameters.Length > 0) {
+                continue; // For now, we only support parameterless constructors
             }
 
-            var srcNullableParts = srcProp.Split(new[] { "?." }, StringSplitOptions.None);
-            var expressionRight = BuildLinqExpressionWithNullChecks(srcNullableParts);
+            var patternMatchDestName = ParseTypeName(mapping.DestinationName);
+            var expressions = new List<SyntaxNodeOrToken>();
+            var destMappings = definition.GetDestinationMappings(mapping, lambdaVarName);
+            for (var j = 0; j < destMappings.Count; j++) {
+                (var destProp, var srcProp) = destMappings[j];
 
-            expressions.Add(
-                AssignmentExpression(
-                    SyntaxKind.SimpleAssignmentExpression,
-                    IdentifierName(destProp)
-                        .WithLeadingTrivia(Whitespace(indentation + INDENT + INDENT))
-                        .WithTrailingTrivia(Space),
-                    expressionRight.WithLeadingTrivia(Space)));
+                // Add a comma after the last expression before adding another
+                if (expressions.Count > 0) {
+                    expressions.Add(Token(
+                        TriviaList(),
+                        SyntaxKind.CommaToken,
+                        TriviaList(CarriageReturnLineFeed)));
+                }
+
+                var srcNullableParts = srcProp.Split(new[] { "?." }, StringSplitOptions.None);
+                var expressionRight = BuildLinqExpressionWithNullChecks(srcNullableParts);
+
+                expressions.Add(
+                    AssignmentExpression(
+                        SyntaxKind.SimpleAssignmentExpression,
+                        IdentifierName(destProp)
+                            .WithLeadingTrivia(Whitespace(indentation + INDENT + INDENT))
+                            .WithTrailingTrivia(Space),
+                        expressionRight.WithLeadingTrivia(Space)));
+            }
+
+            objectCreationExpression = ObjectCreationExpression(patternMatchDestName)
+                .WithNewKeyword(Token(
+                    TriviaList(Space),
+                    SyntaxKind.NewKeyword,
+                    TriviaList(Space)))
+                .WithArgumentList(ArgumentList());
+
+            if (expressions.Count > 0) {
+                objectCreationExpression = objectCreationExpression
+                    .WithInitializer(
+                        InitializerExpression(
+                            SyntaxKind.ObjectInitializerExpression,
+                            SeparatedList<ExpressionSyntax>(expressions))
+                        .WithOpenBraceToken(Token(
+                            TriviaList(CarriageReturnLineFeed, Whitespace(indentation + INDENT)),
+                            SyntaxKind.OpenBraceToken,
+                            TriviaList(CarriageReturnLineFeed)))
+                        .WithCloseBraceToken(Token(
+                            TriviaList(CarriageReturnLineFeed, Whitespace(indentation + INDENT)),
+                            SyntaxKind.CloseBraceToken,
+                            TriviaList())));
+            }
+
+            return true;
         }
 
-        var objectInitializerExpression = ObjectCreationExpression(patternMatchDestName)
-            .WithNewKeyword(Token(
-                TriviaList(Space),
-                SyntaxKind.NewKeyword,
-                TriviaList(Space)))
-            .WithArgumentList(ArgumentList());
-
-        if (expressions.Count > 0) {
-            objectInitializerExpression = objectInitializerExpression
-                .WithInitializer(
-                    InitializerExpression(
-                        SyntaxKind.ObjectInitializerExpression,
-                        SeparatedList<ExpressionSyntax>(expressions))
-                    .WithOpenBraceToken(Token(
-                        TriviaList(CarriageReturnLineFeed, Whitespace(indentation + INDENT)),
-                        SyntaxKind.OpenBraceToken,
-                        TriviaList(CarriageReturnLineFeed)))
-                    .WithCloseBraceToken(Token(
-                        TriviaList(CarriageReturnLineFeed, Whitespace(indentation + INDENT)),
-                        SyntaxKind.CloseBraceToken,
-                        TriviaList())));
-        }
-
-        return objectInitializerExpression;
+        objectCreationExpression = null;
+        return false;
     }
 
     private static TypeSyntax WrapTypeInIQueryable(TypeSyntax innerType)
@@ -798,7 +852,6 @@ internal static class MapGenHelper {
         );
     }
 
-    // TODO: Remove "isMappingToNew". I think I'll instead throw more specific exceptions when the mapper hasn't been instructed on how to construct an object
     private static SwitchSectionSyntax CreateDefaultSwitchThrow(string sourceVarName, bool isMappingToNew, string indentation)
         => SwitchSection()
         .WithLabels(SingletonList<SwitchLabelSyntax>(
@@ -806,56 +859,62 @@ internal static class MapGenHelper {
                 .WithLeadingTrivia(Whitespace(indentation))
                 .WithTrailingTrivia(CarriageReturnLineFeed)))
         .WithStatements(SingletonList<StatementSyntax>(
-            ThrowStatement(
-                ObjectCreationExpression(
-                    //IdentifierName(nameof(MappingException))) // TODO: This currently does not work in consuming project. Need to investigate why
-                    IdentifierName("MappingException")
-                        .WithLeadingTrivia(Space))
-                .WithLeadingTrivia(Space)
-                .WithArgumentList(
-                    ArgumentList(
-                        SingletonSeparatedList(
-                            Argument(
-                                InterpolatedStringExpression(
-                                        Token(SyntaxKind.InterpolatedStringStartToken))
-                                .WithContents(List(new InterpolatedStringContentSyntax[] {
-                                InterpolatedStringText()
-                                .WithTextToken(Token(
-                                    TriviaList(),
-                                    SyntaxKind.InterpolatedStringTextToken,
-                                    "Mapping from ",
-                                    "Mapping from ",
-                                    TriviaList())),
-                                Interpolation(MemberAccessExpression(
-                                    SyntaxKind.SimpleMemberAccessExpression,
-                                    InvocationExpression(
-                                        MemberAccessExpression(
-                                            SyntaxKind.SimpleMemberAccessExpression,
-                                            IdentifierName(sourceVarName),
-                                            IdentifierName("GetType"))),
-                                    IdentifierName("Name"))),
-                                InterpolatedStringText()
-                                .WithTextToken(Token(
-                                    TriviaList(),
-                                    SyntaxKind.InterpolatedStringTextToken,
-                                    $" to {(isMappingToNew ? "new" : "existing")} ",
-                                    $" to {(isMappingToNew ? "new" : "existing")} ",
-                                    TriviaList())),
-                                Interpolation(
-                                    MemberAccessExpression(
-                                        SyntaxKind.SimpleMemberAccessExpression,
-                                        TypeOfExpression(
-                                            IdentifierName(GENERIC_TYPE_NAME_DESTINATION)),
-                                        IdentifierName("Name"))),
-                                InterpolatedStringText()
-                                .WithTextToken(Token(
-                                    TriviaList(),
-                                    SyntaxKind.InterpolatedStringTextToken,
-                                    " has not been configured.",
-                                    " has not been configured.",
-                                    TriviaList()))
-                                })))))))
+            CreateMappingException(sourceVarName, isMappingToNew, "has not been configured")
             .WithLeadingTrivia(Whitespace(indentation + INDENT))));
+
+    private static ThrowStatementSyntax CreateConstructorMapException(string sourceVarName)
+        => CreateMappingException(sourceVarName, true, "does not have a compatible constructor");
+
+    private static ThrowStatementSyntax CreateMappingException(string sourceVarName, bool isMappingToNew, string exceptionReason)
+        => ThrowStatement(
+        ObjectCreationExpression(
+            //IdentifierName(nameof(MappingException))) // TODO: This currently does not work in consuming project. Need to investigate why
+            IdentifierName("MappingException")
+                .WithLeadingTrivia(Space))
+        .WithLeadingTrivia(Space)
+        .WithArgumentList(
+            ArgumentList(
+                SingletonSeparatedList(
+                    Argument(
+                        InterpolatedStringExpression(
+                                Token(SyntaxKind.InterpolatedStringStartToken))
+                        .WithContents(List(new InterpolatedStringContentSyntax[] {
+                        InterpolatedStringText()
+                        .WithTextToken(Token(
+                            TriviaList(),
+                            SyntaxKind.InterpolatedStringTextToken,
+                            "Mapping from ",
+                            "Mapping from ",
+                            TriviaList())),
+                        Interpolation(MemberAccessExpression(
+                            SyntaxKind.SimpleMemberAccessExpression,
+                            InvocationExpression(
+                                MemberAccessExpression(
+                                    SyntaxKind.SimpleMemberAccessExpression,
+                                    IdentifierName(sourceVarName),
+                                    IdentifierName("GetType"))),
+                            IdentifierName("Name"))),
+                        InterpolatedStringText()
+                        .WithTextToken(Token(
+                            TriviaList(),
+                            SyntaxKind.InterpolatedStringTextToken,
+                            $" to {(isMappingToNew ? "new" : "existing")} ",
+                            $" to {(isMappingToNew ? "new" : "existing")} ",
+                            TriviaList())),
+                        Interpolation(
+                            MemberAccessExpression(
+                                SyntaxKind.SimpleMemberAccessExpression,
+                                TypeOfExpression(
+                                    IdentifierName(GENERIC_TYPE_NAME_DESTINATION)),
+                                IdentifierName("Name"))),
+                        InterpolatedStringText()
+                        .WithTextToken(Token(
+                            TriviaList(),
+                            SyntaxKind.InterpolatedStringTextToken,
+                            $" {exceptionReason}.",
+                            $" {exceptionReason}.",
+                            TriviaList()))
+                        })))))));
 
     private static TypeDeclarationSyntax WithAutoGeneratedCodeAttributes(this TypeDeclarationSyntax interfaceDeclaration, string indentation, bool withCodeCoverageExclusion = false) {
         var attributes = new List<AttributeListSyntax> {

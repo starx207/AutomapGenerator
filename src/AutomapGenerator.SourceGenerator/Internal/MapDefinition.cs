@@ -87,8 +87,9 @@ internal class MapDefinition {
     }
 
     public record Mapping(string SourceName, ImmutableArray<IPropertySymbol> SourceProperties,
-        string DestinationName, ImmutableArray<IPropertySymbol> WritableDestinationProperties, bool ProjectionOnly,
-        Dictionary<string, MappingCustomization> CustomMappings) {
+        string DestinationName, ImmutableArray<IPropertySymbol> WritableDestinationProperties, 
+        ImmutableArray<IMethodSymbol> DestinationConstructors,
+        bool ProjectionOnly, Dictionary<string, MappingCustomization> CustomMappings) {
 
         public bool TryGetExplicitMapping(ref List<(string, string)> mappings, string destPropName, string sourceVarName) {
             if (CustomMappings.TryGetValue(destPropName, out var customMapping) && customMapping.LambdaMapping is { } explicitLambdaExpr) {

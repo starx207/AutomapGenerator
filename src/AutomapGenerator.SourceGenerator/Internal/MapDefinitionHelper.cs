@@ -114,6 +114,7 @@ internal static class MapDefinitionHelper {
                         GetAllPropertySymbols(srcSymbol),
                         destSymbol.ToDisplayString(),
                         GetAllPropertySymbols(destSymbol, writableOnly: true),
+                        GetAllPublicConstructors(destSymbol),
                         projection,
                         new()));
                 } else {
@@ -220,6 +221,7 @@ internal static class MapDefinitionHelper {
             GetAllPropertySymbols(sourceSymbol),
             destinationSymbol.ToDisplayString(),
             GetAllPropertySymbols(destinationSymbol, writableOnly: true),
+            GetAllPublicConstructors(destinationSymbol),
             projectionOnly,
             GetCustomMappings(invocation.Origin));
     }
@@ -308,6 +310,20 @@ internal static class MapDefinitionHelper {
         }
 
         return ImmutableArray.CreateRange(sourceProperties);
+    }
+
+    private static ImmutableArray<IMethodSymbol> GetAllPublicConstructors(ITypeSymbol? sourceSymbol) {
+        var sourceCtors = new List<IMethodSymbol>();
+        if (sourceSymbol is not null) {
+            var sourceMembers = sourceSymbol.GetMembers();
+            for (var i = 0; i < sourceMembers.Length; i++) {
+                var srcMember = sourceMembers[i];
+                if (srcMember is IMethodSymbol { MethodKind: MethodKind.Constructor, DeclaredAccessibility: Accessibility.Public } ctorMethod) {
+                    sourceCtors.Add(ctorMethod);
+                }
+            }
+        }
+        return ImmutableArray.CreateRange(sourceCtors);
     }
 
     private static bool TryExtractGenericName(ExpressionSyntax expression, int arity, [NotNullWhen(true)] out GenericNameSyntax? genericName) {
