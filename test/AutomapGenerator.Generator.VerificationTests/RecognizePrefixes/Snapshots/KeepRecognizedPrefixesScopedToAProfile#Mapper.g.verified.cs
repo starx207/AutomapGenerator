@@ -26,19 +26,14 @@ namespace AutomapGenerator
             switch (source, destination)
             {
                 case (AutomapGenerator.Generator.VerificationTests.RecognizePrefixes.Sources.SourceWithSinglePrefix s, AutomapGenerator.Generator.VerificationTests.RecognizePrefixes.Sources.UnprefixedObject d):
-                    MapInternal(s, d);
-                    break;
+                    return (dynamic)MapInternal(s, d);
                 case (AutomapGenerator.Generator.VerificationTests.RecognizePrefixes.Sources.OtherSourceWithSinglePrefix s, AutomapGenerator.Generator.VerificationTests.RecognizePrefixes.Sources.UnprefixedObject d):
-                    MapInternal(s, d);
-                    break;
+                    return (dynamic)MapInternal(s, d);
                 case (AutomapGenerator.Generator.VerificationTests.RecognizePrefixes.Sources.UnprefixedObject s, AutomapGenerator.Generator.VerificationTests.RecognizePrefixes.Sources.DestinationWithSinglePrefix d):
-                    MapInternal(s, d);
-                    break;
+                    return (dynamic)MapInternal(s, d);
                 default:
                     throw new MappingException($"Mapping from {source.GetType().Name} to existing {typeof(TDestination).Name} has not been configured.");
             }
-
-            return destination;
         }
 
         private AutomapGenerator.Generator.VerificationTests.RecognizePrefixes.Sources.UnprefixedObject MapInternal(AutomapGenerator.Generator.VerificationTests.RecognizePrefixes.Sources.SourceWithSinglePrefix source, AutomapGenerator.Generator.VerificationTests.RecognizePrefixes.Sources.UnprefixedObject destination)

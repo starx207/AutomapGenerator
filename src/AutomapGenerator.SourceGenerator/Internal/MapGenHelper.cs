@@ -12,6 +12,7 @@ internal static class MapGenHelper {
     private const string PROJECTTO_METHOD_NAME = "ProjectTo";
     private const string GENERIC_TYPE_NAME_DESTINATION = "TDestination";
     private const string MAPPER_INTERFACE = "IMapper";
+    private const string MAP_INTERNAL_METHOD_NAME = "MapInternal";
     private static readonly string _generatorVersion = typeof(MapperGenerator).Assembly.GetName().Version.ToString();
 
     public static NamespaceDeclarationSyntax CreateMapperClass(MapDefinition[] sources) {
@@ -242,6 +243,21 @@ internal static class MapGenHelper {
         return false;
     }
 
+    private static ReturnStatementSyntax ReturnFromMapInternal(ArgumentSyntax sourceArg, ArgumentSyntax destinationArg)
+        => ReturnStatement(
+            CastExpression(
+                IdentifierName("dynamic"),
+                InvocationExpression(IdentifierName(MAP_INTERNAL_METHOD_NAME))
+                .WithArgumentList(ArgumentList(SeparatedList<ArgumentSyntax>(new SyntaxNodeOrToken[] {
+                    sourceArg,
+                    Token(
+                        TriviaList(),
+                        SyntaxKind.CommaToken,
+                        TriviaList(Space)),
+                    destinationArg
+                }))))
+            .WithLeadingTrivia(Space));
+
     private static SwitchSectionSyntax CreateMapNewSwitchSection(MethodDeclarationSyntax mapInternalMethod, MapDefinition[] sources, string sourceVarName, string indentation) {
         var sourceType = mapInternalMethod.ParameterList.Parameters[0].Type!;
         var destinationType = mapInternalMethod.ParameterList.Parameters[1].Type!;
@@ -251,19 +267,7 @@ internal static class MapGenHelper {
         var sourceMatchVarName = "s";
 
         var switchStatement = TryGetObjectCreationExpressionFrom(mapping, out var objCreationExpr)
-            ? ReturnStatement(
-                CastExpression(
-                    IdentifierName("dynamic"),
-                    InvocationExpression(IdentifierName(mapInternalMethod.Identifier.Text))
-                    .WithArgumentList(ArgumentList(SeparatedList<ArgumentSyntax>(new SyntaxNodeOrToken[] {
-                        Argument(IdentifierName(sourceMatchVarName)),
-                        Token(
-                            TriviaList(),
-                            SyntaxKind.CommaToken,
-                            TriviaList(Space)),
-                        Argument(objCreationExpr)
-                    }))))
-                .WithLeadingTrivia(Space))
+            ? ReturnFromMapInternal(Argument(IdentifierName(sourceMatchVarName)), Argument(objCreationExpr))
             : (StatementSyntax)CreateConstructorMapException(sourceVarName);
 
         return SwitchSection()
@@ -364,9 +368,7 @@ internal static class MapGenHelper {
                         .WithCloseBraceToken(Token(
                             TriviaList(CarriageReturnLineFeed, Whitespace(indentation + INDENT)),
                             SyntaxKind.CloseBraceToken,
-                            TriviaList(CarriageReturnLineFeed))),
-                        ReturnStatement(IdentifierName(destinationVarName).WithLeadingTrivia(Space))
-                            .WithLeadingTrivia(CarriageReturnLineFeed, Whitespace(indentation + INDENT))
+                            TriviaList()))
                     )
                     .WithOpenBraceToken(Token(
                         TriviaList(CarriageReturnLineFeed, Whitespace(indentation)),
@@ -482,7 +484,7 @@ internal static class MapGenHelper {
             patternMatchDestName,
             Identifier(
                 TriviaList(Space),
-                "MapInternal",
+                MAP_INTERNAL_METHOD_NAME,
                 TriviaList())
         ).WithModifiers(TokenList(
             Token(
@@ -543,20 +545,13 @@ internal static class MapGenHelper {
                         Token(SyntaxKind.ColonToken))))
             .WithLeadingTrivia(Whitespace(indentation))
             .WithTrailingTrivia(CarriageReturn)
-            .WithStatements(List(new StatementSyntax[] {
-                ExpressionStatement(
-                    InvocationExpression(IdentifierName(mapMethod.Identifier.Text))
-                        .WithArgumentList(ArgumentList(SeparatedList<ArgumentSyntax>(new SyntaxNodeOrToken[] {
-                            Argument(IdentifierName(matchedSrcVarName)),
-                            Token(SyntaxKind.CommaToken).WithTrailingTrivia(Space),
-                            Argument(IdentifierName(matchedDestVarName))
-                        }))))
-                    .WithLeadingTrivia(Whitespace(indentation + INDENT))
-                    .WithTrailingTrivia(CarriageReturnLineFeed),
-                BreakStatement()
-                    .WithLeadingTrivia(Whitespace(indentation + INDENT))
-                    .WithTrailingTrivia(CarriageReturnLineFeed)
-            }));
+            .WithStatements(SingletonList<StatementSyntax>(
+                ReturnFromMapInternal(
+                    Argument(IdentifierName(matchedSrcVarName)), 
+                    Argument(IdentifierName(matchedDestVarName)))
+                .WithLeadingTrivia(Whitespace(indentation + INDENT))
+                .WithTrailingTrivia(CarriageReturnLineFeed)
+            ));
     }
 
     private static MethodDeclarationSyntax CreateInternalProjectMethod(MapDefinition[] definitions, string sourceName, string sourceVarName, string indentation) {

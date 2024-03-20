@@ -22,8 +22,6 @@ namespace AutomapGenerator
                 default:
                     throw new MappingException($"Mapping from {source.GetType().Name} to existing {typeof(TDestination).Name} has not been configured.");
             }
-
-            return destination;
         }
 
         public global::System.Linq.IQueryable<TDestination> ProjectTo<TDestination>(global::System.Linq.IQueryable<object> source)

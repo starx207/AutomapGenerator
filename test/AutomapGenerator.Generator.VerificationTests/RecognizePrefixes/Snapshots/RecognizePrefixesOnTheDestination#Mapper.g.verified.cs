@@ -22,13 +22,10 @@ namespace AutomapGenerator
             switch (source, destination)
             {
                 case (AutomapGenerator.Generator.VerificationTests.RecognizePrefixes.Sources.UnprefixedObject s, AutomapGenerator.Generator.VerificationTests.RecognizePrefixes.Sources.DestinationWithMultiplePrefixes d):
-                    MapInternal(s, d);
-                    break;
+                    return (dynamic)MapInternal(s, d);
                 default:
                     throw new MappingException($"Mapping from {source.GetType().Name} to existing {typeof(TDestination).Name} has not been configured.");
             }
-
-            return destination;
         }
 
         private AutomapGenerator.Generator.VerificationTests.RecognizePrefixes.Sources.DestinationWithMultiplePrefixes MapInternal(AutomapGenerator.Generator.VerificationTests.RecognizePrefixes.Sources.UnprefixedObject source, AutomapGenerator.Generator.VerificationTests.RecognizePrefixes.Sources.DestinationWithMultiplePrefixes destination)

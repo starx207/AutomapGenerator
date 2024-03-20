@@ -22,13 +22,10 @@ namespace AutomapGenerator
             switch (source, destination)
             {
                 case (AutomapGenerator.Generator.VerificationTests.MemberOverride.Sources.FullSourceObj s, AutomapGenerator.Generator.VerificationTests.MemberOverride.Sources.FullDestinationObj d):
-                    MapInternal(s, d);
-                    break;
+                    return (dynamic)MapInternal(s, d);
                 default:
                     throw new MappingException($"Mapping from {source.GetType().Name} to existing {typeof(TDestination).Name} has not been configured.");
             }
-
-            return destination;
         }
 
         private AutomapGenerator.Generator.VerificationTests.MemberOverride.Sources.FullDestinationObj MapInternal(AutomapGenerator.Generator.VerificationTests.MemberOverride.Sources.FullSourceObj source, AutomapGenerator.Generator.VerificationTests.MemberOverride.Sources.FullDestinationObj destination)

@@ -22,13 +22,10 @@ namespace AutomapGenerator
             switch (source, destination)
             {
                 case (AutomapGenerator.Generator.VerificationTests.NullFallbacks.Sources.SourceWithNullableValueTypes s, AutomapGenerator.Generator.VerificationTests.NullFallbacks.Sources.DestinationForNullableValueTypes d):
-                    MapInternal(s, d);
-                    break;
+                    return (dynamic)MapInternal(s, d);
                 default:
                     throw new MappingException($"Mapping from {source.GetType().Name} to existing {typeof(TDestination).Name} has not been configured.");
             }
-
-            return destination;
         }
 
         private AutomapGenerator.Generator.VerificationTests.NullFallbacks.Sources.DestinationForNullableValueTypes MapInternal(AutomapGenerator.Generator.VerificationTests.NullFallbacks.Sources.SourceWithNullableValueTypes source, AutomapGenerator.Generator.VerificationTests.NullFallbacks.Sources.DestinationForNullableValueTypes destination)

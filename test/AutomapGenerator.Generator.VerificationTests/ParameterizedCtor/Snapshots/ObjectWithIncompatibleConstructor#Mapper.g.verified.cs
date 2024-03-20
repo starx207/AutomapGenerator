@@ -22,13 +22,10 @@ namespace AutomapGenerator
             switch (source, destination)
             {
                 case (AutomapGenerator.Generator.VerificationTests.ParameterizedCtor.Sources.SourceObj s, AutomapGenerator.Generator.VerificationTests.ParameterizedCtor.Sources.DestWithIncompatibleCtor d):
-                    MapInternal(s, d);
-                    break;
+                    return (dynamic)MapInternal(s, d);
                 default:
                     throw new MappingException($"Mapping from {source.GetType().Name} to existing {typeof(TDestination).Name} has not been configured.");
             }
-
-            return destination;
         }
 
         private AutomapGenerator.Generator.VerificationTests.ParameterizedCtor.Sources.DestWithIncompatibleCtor MapInternal(AutomapGenerator.Generator.VerificationTests.ParameterizedCtor.Sources.SourceObj source, AutomapGenerator.Generator.VerificationTests.ParameterizedCtor.Sources.DestWithIncompatibleCtor destination)

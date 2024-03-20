@@ -22,13 +22,10 @@ namespace AutomapGenerator
             switch (source, destination)
             {
                 case (AutomapGenerator.Generator.VerificationTests.NullFallbacks.Sources.SourceObj s, AutomapGenerator.Generator.VerificationTests.NullFallbacks.Sources.DestinationObjFromNested d):
-                    MapInternal(s, d);
-                    break;
+                    return (dynamic)MapInternal(s, d);
                 default:
                     throw new MappingException($"Mapping from {source.GetType().Name} to existing {typeof(TDestination).Name} has not been configured.");
             }
-
-            return destination;
         }
 
         private AutomapGenerator.Generator.VerificationTests.NullFallbacks.Sources.DestinationObjFromNested MapInternal(AutomapGenerator.Generator.VerificationTests.NullFallbacks.Sources.SourceObj source, AutomapGenerator.Generator.VerificationTests.NullFallbacks.Sources.DestinationObjFromNested destination)
