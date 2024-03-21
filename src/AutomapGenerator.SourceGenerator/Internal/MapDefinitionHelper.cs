@@ -110,9 +110,9 @@ internal static class MapDefinitionHelper {
 
                     // Once we have the source type and destination type, we can create a map definition
                     definition.AddMapping(new(
-                        srcSymbol.ToDisplayString(),
+                        srcSymbol,
                         GetAllPropertySymbols(srcSymbol),
-                        destSymbol.ToDisplayString(),
+                        destSymbol,
                         GetAllPropertySymbols(destSymbol, writableOnly: true),
                         GetAllPublicConstructors(destSymbol),
                         projection,
@@ -217,9 +217,9 @@ internal static class MapDefinitionHelper {
         var sourceSymbol = GetTypeSymbol(invocation.Semantic, invocation.GenericName.TypeArgumentList.Arguments[0], token);
         var destinationSymbol = GetTypeSymbol(invocation.Semantic, invocation.GenericName.TypeArgumentList.Arguments[1], token);
 
-        return new(sourceSymbol.ToDisplayString(),
+        return new(sourceSymbol,
             GetAllPropertySymbols(sourceSymbol),
-            destinationSymbol.ToDisplayString(),
+            destinationSymbol,
             GetAllPropertySymbols(destinationSymbol, writableOnly: true),
             GetAllPublicConstructors(destinationSymbol),
             projectionOnly,

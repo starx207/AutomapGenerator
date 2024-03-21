@@ -86,10 +86,13 @@ internal class MapDefinition {
         return mappings;
     }
 
-    public record Mapping(string SourceName, ImmutableArray<IPropertySymbol> SourceProperties,
-        string DestinationName, ImmutableArray<IPropertySymbol> WritableDestinationProperties, 
+    public record Mapping(ITypeSymbol SourceSymbol, ImmutableArray<IPropertySymbol> SourceProperties,
+        ITypeSymbol DestinationSymbol, ImmutableArray<IPropertySymbol> WritableDestinationProperties, 
         ImmutableArray<IMethodSymbol> DestinationConstructors,
         bool ProjectionOnly, Dictionary<string, MappingCustomization> CustomMappings) {
+
+        public string SourceName { get; } = SourceSymbol.ToDisplayString();
+        public string DestinationName { get; } = DestinationSymbol.ToDisplayString();
 
         public bool TryGetExplicitMapping(ref List<(string, string)> mappings, string destPropName, string sourceVarName) {
             if (CustomMappings.TryGetValue(destPropName, out var customMapping) && customMapping.LambdaMapping is { } explicitLambdaExpr) {

@@ -168,6 +168,22 @@ internal static class MapGenHelper {
             switchSections.Add(CreateMapNewSwitchSection(method, sources, sourceVarName, indentation));
         }
 
+        var needsStringMap = false;
+        for (var i = 0; i < sources.Length; i++) {
+            for (var j = 0; j < sources[i].Mappings.Count; j++) {
+                if (sources[i].Mappings[j].DestinationSymbol.SpecialType == SpecialType.System_String) {
+                    needsStringMap = true;
+                    break;
+                }
+            }
+            if (needsStringMap) {
+                break;
+            }
+        }
+        if (needsStringMap) {
+            switchSections.Insert(0, CreateMapNewStringSwitchSection(sourceVarName, indentation));
+        }
+
         switchSections.Add(CreateDefaultSwitchThrow(sourceVarName, true, indentation + INDENT + INDENT));
 
         return CreateMapNewSignature(sourceVarName, indentation)
@@ -258,6 +274,53 @@ internal static class MapGenHelper {
                 }))))
             .WithLeadingTrivia(Space));
 
+    private static SwitchSectionSyntax CreateMapNewStringSwitchSection(string sourceVarName, string indentation) {
+        var typeMatchVarName = "t";
+
+        return SwitchSection()
+            .WithLabels(SingletonList<SwitchLabelSyntax>(
+                CasePatternSwitchLabel(
+                    RecursivePattern()
+                    .WithPositionalPatternClause(
+                        PositionalPatternClause(SeparatedList<SubpatternSyntax>(new SyntaxNodeOrToken[] {
+                            Subpattern(
+                                DiscardPattern()),
+                            Token(
+                                TriviaList(),
+                                SyntaxKind.CommaToken,
+                                TriviaList(Space)),
+                            Subpattern(
+                                DeclarationPattern(
+                                    ParseTypeName("System.Type"),
+                                    SingleVariableDesignation(Identifier(
+                                        TriviaList(Space),
+                                        typeMatchVarName,
+                                        TriviaList()))))
+                        }))
+                        .WithLeadingTrivia(Space)
+                        .WithTrailingTrivia(Space)),
+                    Token(
+                        TriviaList(),
+                        SyntaxKind.ColonToken,
+                        TriviaList(CarriageReturnLineFeed)))
+                .WithWhenClause(
+                    WhenClause(
+                        BinaryExpression(
+                            SyntaxKind.EqualsExpression,
+                            IdentifierName(Identifier(
+                                TriviaList(Space),
+                                typeMatchVarName,
+                                TriviaList(Space))),
+                            TypeOfExpression(PredefinedType(Token(SyntaxKind.StringKeyword)))
+                                .WithLeadingTrivia(Space))))
+                .WithLeadingTrivia(Whitespace(indentation + INDENT + INDENT))))
+            .WithStatements(
+                SingletonList<StatementSyntax>(
+                    ReturnMapToString(sourceVarName)
+                    .WithLeadingTrivia(Whitespace(indentation + INDENT + INDENT + INDENT))
+                    .WithTrailingTrivia(CarriageReturnLineFeed)));
+    }
+
     private static SwitchSectionSyntax CreateMapNewSwitchSection(MethodDeclarationSyntax mapInternalMethod, MapDefinition[] sources, string sourceVarName, string indentation) {
         var sourceType = mapInternalMethod.ParameterList.Parameters[0].Type!;
         var destinationType = mapInternalMethod.ParameterList.Parameters[1].Type!;
@@ -325,16 +388,25 @@ internal static class MapGenHelper {
 
         var internalMapMethods = new List<MethodDeclarationSyntax>();
         var switchSections = new List<SwitchSectionSyntax>();
+        var needsStringMap = false;
         for (var i = 0; i < srcMappings.Length; i++) {
             var definition = srcMappings[i];
             for (var j = 0; j < definition.Mappings.Count; j++) {
                 var mapping = definition.Mappings[j];
                 if (!mapping.ProjectionOnly) {
-                    var mapMethod = CreateInternalMapMethod(definition, mapping, indentation);
-                    internalMapMethods.Add(mapMethod);
-                    switchSections.Add(CreateMapMethodSwitchSection(mapMethod, indentation + INDENT + INDENT));
+                    if (mapping.DestinationSymbol.SpecialType == SpecialType.System_String) {
+                        needsStringMap = true;
+                    } else {
+                        var mapMethod = CreateInternalMapMethod(definition, mapping, indentation);
+                        internalMapMethods.Add(mapMethod);
+                        switchSections.Add(CreateMapMethodSwitchSection(mapMethod, indentation + INDENT + INDENT));
+                    }
                 }
             }
+        }
+
+        if (needsStringMap) {
+            switchSections.Insert(0, CreateMapToStringSwitchSection(sourceVarName, indentation + INDENT + INDENT));
         }
 
         // Add the default switch section 
@@ -508,6 +580,55 @@ internal static class MapGenHelper {
                 TriviaList())));
     }
 
+    private static ReturnStatementSyntax ReturnMapToString(string sourceVarName)
+        => ReturnStatement(
+            CastExpression(
+                IdentifierName("dynamic"),
+                PostfixUnaryExpression(
+                    SyntaxKind.SuppressNullableWarningExpression,
+                    ConditionalAccessExpression(
+                        IdentifierName(sourceVarName),
+                        InvocationExpression(
+                            MemberBindingExpression(
+                                IdentifierName("ToString"))))))
+            .WithLeadingTrivia(Space));
+
+    private static SwitchSectionSyntax CreateMapToStringSwitchSection(string sourceVarName, string indentation) {
+        var matchedDestVarName = "d";
+
+        return SwitchSection()
+            .WithLabels(
+                SingletonList<SwitchLabelSyntax>(
+                    CasePatternSwitchLabel(
+                        RecursivePattern()
+                        .WithPositionalPatternClause(
+                            PositionalPatternClause(
+                                SeparatedList<SubpatternSyntax>(new SyntaxNodeOrToken[] {
+                                    Subpattern(
+                                        DiscardPattern()),
+                                    Token(
+                                        TriviaList(),
+                                        SyntaxKind.CommaToken,
+                                        TriviaList(Space)),
+                                    Subpattern(
+                                        DeclarationPattern(
+                                            PredefinedType(Token(SyntaxKind.StringKeyword)),
+                                            SingleVariableDesignation(Identifier(
+                                                TriviaList(Space),
+                                                matchedDestVarName,
+                                                TriviaList()))))
+                                }))
+                            .WithLeadingTrivia(Space)),
+                        Token(SyntaxKind.ColonToken))))
+            .WithLeadingTrivia(Whitespace(indentation))
+            .WithTrailingTrivia(CarriageReturn)
+            .WithStatements(SingletonList<StatementSyntax>(
+                ReturnMapToString(sourceVarName)
+                .WithLeadingTrivia(Whitespace(indentation + INDENT))
+                .WithTrailingTrivia(CarriageReturnLineFeed)
+            ));
+    }
+
     private static SwitchSectionSyntax CreateMapMethodSwitchSection(MethodDeclarationSyntax mapMethod, string indentation) {
         var patternMatchSrcName = mapMethod.ParameterList.Parameters[0].Type!;
         var patternMatchDestName = mapMethod.ParameterList.Parameters[1].Type!;
@@ -554,6 +675,26 @@ internal static class MapGenHelper {
             ));
     }
 
+    private static InvocationExpressionSyntax CreateLinqSelectExpression(string sourceVarName, string lambdaVarName, SimpleLambdaExpressionSyntax linqSelectLambdaExpression)
+        => InvocationExpression(
+            MemberAccessExpression(
+                SyntaxKind.SimpleMemberAccessExpression,
+                MemberAccessExpression(
+                    SyntaxKind.SimpleMemberAccessExpression,
+                    AliasQualifiedName(
+                        IdentifierName(Token(SyntaxKind.GlobalKeyword)),
+                        IdentifierName(typeof(Queryable).Namespace)),
+                    IdentifierName(nameof(Queryable))),
+                IdentifierName(Identifier(nameof(Queryable.Select)))))
+        .WithArgumentList(ArgumentList(SeparatedList<ArgumentSyntax>(new SyntaxNodeOrToken[] {
+            Argument(IdentifierName(sourceVarName)),
+            Token(
+                TriviaList(),
+                SyntaxKind.CommaToken,
+                TriviaList(Space)),
+            Argument(linqSelectLambdaExpression)
+        })));
+
     private static MethodDeclarationSyntax CreateInternalProjectMethod(MapDefinition[] definitions, string sourceName, string sourceVarName, string indentation) {
         var patternMatchSrcName = WrapTypeInIQueryable(ParseTypeName(sourceName));
         var matchedSrcVarName = "sourceQueryable";
@@ -570,33 +711,9 @@ internal static class MapGenHelper {
                 var mapping = mappings[j];
                 var patternMatchDestName = ParseTypeName(mapping.DestinationName);
                 StatementSyntax switchStatement;
-                if (TryCreateProjectionObjectInitializer(definition, mapping, lambdaVarName, indentation + INDENT + INDENT + INDENT, out var objectInitializerExpression)) {
-
-                    var linqSelect = InvocationExpression(
-                            MemberAccessExpression(
-                                SyntaxKind.SimpleMemberAccessExpression,
-                                MemberAccessExpression(
-                                    SyntaxKind.SimpleMemberAccessExpression,
-                                    AliasQualifiedName(
-                                        IdentifierName(Token(SyntaxKind.GlobalKeyword)),
-                                        IdentifierName(typeof(Queryable).Namespace)),
-                                    IdentifierName(nameof(Queryable))),
-                                IdentifierName(Identifier(nameof(Queryable.Select)))))
-                        .WithArgumentList(ArgumentList(SeparatedList<ArgumentSyntax>(new SyntaxNodeOrToken[] {
-                    Argument(IdentifierName(matchedSrcVarName)),
-                    Token(
-                        TriviaList(),
-                        SyntaxKind.CommaToken,
-                        TriviaList(Space)),
-                    Argument(
-                        SimpleLambdaExpression(
-                            Parameter(Identifier(
-                                TriviaList(),
-                                lambdaVarName,
-                                TriviaList(Space))))
-                        .WithExpressionBody(objectInitializerExpression))
-                        })));
-
+                if (TryCreateProjectToString(mapping, lambdaVarName, out var selectLambda)
+                    || TryCreateProjectionObjectInitializer(definition, mapping, lambdaVarName, indentation + INDENT + INDENT + INDENT, out selectLambda)) {
+                    var linqSelect = CreateLinqSelectExpression(matchedSrcVarName, lambdaVarName, selectLambda);
 
                     var linqCast = InvocationExpression(
                             MemberAccessExpression(
@@ -697,7 +814,57 @@ internal static class MapGenHelper {
                 TriviaList())));
     }
 
-    private static bool TryCreateProjectionObjectInitializer(MapDefinition definition, MapDefinition.Mapping mapping, string lambdaVarName, string indentation, [NotNullWhen(true)] out ObjectCreationExpressionSyntax? objectCreationExpression) {
+    private static bool TryCreateProjectToString(MapDefinition.Mapping mapping, string lambdaVarName, [NotNullWhen(true)] out SimpleLambdaExpressionSyntax? toStringExpression) {
+        if (mapping.DestinationSymbol.SpecialType != SpecialType.System_String) {
+            toStringExpression = null;
+            return false;
+        }
+
+        if (mapping.SourceSymbol.IsReferenceType) {
+            var nullLiteral = LiteralExpression(SyntaxKind.NullLiteralExpression)
+                .WithLeadingTrivia(Space)
+                .WithTrailingTrivia(Space);
+
+            toStringExpression = SimpleLambdaExpression(
+                Parameter(Identifier(
+                    TriviaList(),
+                    lambdaVarName,
+                    TriviaList(Space))))
+                .WithExpressionBody(
+                    ConditionalExpression(
+                        BinaryExpression(
+                            SyntaxKind.EqualsExpression,
+                            IdentifierName(Identifier(
+                                TriviaList(),
+                                lambdaVarName,
+                                TriviaList(Space))),
+                            nullLiteral),
+                        nullLiteral,
+                        InvocationExpression(
+                            MemberAccessExpression(
+                                SyntaxKind.SimpleMemberAccessExpression,
+                                IdentifierName(lambdaVarName),
+                                IdentifierName("ToString")))
+                        .WithLeadingTrivia(Space))
+                    .WithLeadingTrivia(Space));
+        } else {
+            toStringExpression = SimpleLambdaExpression(
+                Parameter(Identifier(
+                    TriviaList(),
+                    lambdaVarName,
+                    TriviaList(Space))))
+                .WithExpressionBody(
+                    InvocationExpression(
+                        MemberAccessExpression(
+                            SyntaxKind.SimpleMemberAccessExpression,
+                            IdentifierName(lambdaVarName),
+                            IdentifierName("ToString")))
+                    .WithLeadingTrivia(Space));
+        }
+        return true;
+    }
+
+    private static bool TryCreateProjectionObjectInitializer(MapDefinition definition, MapDefinition.Mapping mapping, string lambdaVarName, string indentation, [NotNullWhen(true)] out SimpleLambdaExpressionSyntax? objectCreationLambdaExpression) {
         for (var i = 0; i < mapping.DestinationConstructors.Length; i++) {
             var ctor = mapping.DestinationConstructors[i];
             if (ctor.Parameters.Length > 0) {
@@ -730,7 +897,7 @@ internal static class MapGenHelper {
                         expressionRight.WithLeadingTrivia(Space)));
             }
 
-            objectCreationExpression = ObjectCreationExpression(patternMatchDestName)
+            var objectCreationExpression = ObjectCreationExpression(patternMatchDestName)
                 .WithNewKeyword(Token(
                     TriviaList(Space),
                     SyntaxKind.NewKeyword,
@@ -753,10 +920,17 @@ internal static class MapGenHelper {
                             TriviaList())));
             }
 
+            objectCreationLambdaExpression = SimpleLambdaExpression(
+                Parameter(Identifier(
+                    TriviaList(),
+                    lambdaVarName,
+                    TriviaList(Space))))
+                .WithExpressionBody(objectCreationExpression);
+
             return true;
         }
 
-        objectCreationExpression = null;
+        objectCreationLambdaExpression = null;
         return false;
     }
 
