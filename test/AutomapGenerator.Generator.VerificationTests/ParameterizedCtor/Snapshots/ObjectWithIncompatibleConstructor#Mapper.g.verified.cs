@@ -51,7 +51,7 @@ namespace AutomapGenerator
             switch (typeof(TDestination))
             {
                 case System.Type t when t == typeof(AutomapGenerator.Generator.VerificationTests.ParameterizedCtor.Sources.DestWithIncompatibleCtor):
-                    throw new MappingException($"Mapping from {source.GetType().Name} to new {typeof(TDestination).Name} does not have a compatible constructor.");
+                    throw new MappingException($"Mapping from {sourceQueryable.GetType().Name} to new {typeof(TDestination).Name} does not have a compatible constructor.");
                 default:
                     throw new MappingException($"Mapping from {sourceQueryable.GetType().Name} to new {typeof(TDestination).Name} has not been configured.");
             }

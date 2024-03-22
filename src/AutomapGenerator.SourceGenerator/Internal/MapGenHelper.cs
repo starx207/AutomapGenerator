@@ -471,7 +471,7 @@ internal static class MapGenHelper {
                 }
                 projectedSources.Add(source);
 
-                var projectMethod = CreateInternalProjectMethod(srcMappings, source, sourceVarName, indentation);
+                var projectMethod = CreateInternalProjectMethod(srcMappings, source, indentation);
                 internalProjectMethods.Add(projectMethod);
                 switchSections.Add(CreateProjectToMethodSwitchSection(projectMethod, indentation + INDENT + INDENT));
             }
@@ -695,7 +695,7 @@ internal static class MapGenHelper {
             Argument(linqSelectLambdaExpression)
         })));
 
-    private static MethodDeclarationSyntax CreateInternalProjectMethod(MapDefinition[] definitions, string sourceName, string sourceVarName, string indentation) {
+    private static MethodDeclarationSyntax CreateInternalProjectMethod(MapDefinition[] definitions, string sourceName, string indentation) {
         var patternMatchSrcName = WrapTypeInIQueryable(ParseTypeName(sourceName));
         var matchedSrcVarName = "sourceQueryable";
         var lambdaVarName = "source";
@@ -735,7 +735,7 @@ internal static class MapGenHelper {
 
                     switchStatement = ReturnStatement(linqCast);
                 } else {
-                    switchStatement = CreateConstructorMapException(sourceVarName);
+                    switchStatement = CreateConstructorMapException(matchedSrcVarName);
                 }
 
                 var switchSection = SwitchSection()
