@@ -157,25 +157,58 @@ public class MappingUseCases {
         destination.NewTypeCode.Should().BeNull();
     }
 
-    [Fact(Skip = "Not Implemented")]
+    [Fact]
     public void MapServiceTestThatIncludesDerivedTypesInBaseMapping() {
         // Arrange
-        // TODO: The Map service creates a base class mapping and uses IncludeAllDerived(). Make a functional test for that scenario
+        // TODO: Currently, the profile for this is commented out because it causes an error in the generated code.
+        // TODO: The way the generator is now working, I would not actually need the "IncludeAllDerived" api as it would include the derived classes by default
+        var source = _mocker.Create<CreateShapeCommand>();
 
         // Act
+        var footprint = _mapper.Map<ShapeFootprint>(source);
+        var other = _mapper.Map<ShapeOther>(source);
 
         // Assert
+        using (new AssertionScope()) {
+            footprint.LayerId.Should().BeEmpty();
+            footprint.ShapeArea.Should().BeNull();
+            footprint.Code.Should().Be(source.Code);
+            footprint.Description.Should().Be(source.Description);
+            footprint.Altitude.Should().Be(source.Altitude);
+            footprint.ShapeColor.Should().Be(source.ShapeColor);
+            footprint.AdditionalInfo.Should().Be(source.AdditionalInfo);
+            footprint.ExternalId.Should().Be(source.ExternalId);
+            footprint.SourceRecId.Should().Be(source.SourceRecId);
+            footprint.BinaryCheckSum.Should().Be(source.BinaryCheckSum);
+            footprint.RotationAngle.Should().Be(source.RotationAngle);
 
+            other.LayerId.Should().BeEmpty();
+            other.ShapeArea.Should().BeNull();
+            other.Code.Should().Be(source.Code);
+            other.Description.Should().Be(source.Description);
+            other.Altitude.Should().Be(source.Altitude);
+            other.ShapeColor.Should().Be(source.ShapeColor);
+            other.AdditionalInfo.Should().Be(source.AdditionalInfo);
+            other.ExternalId.Should().Be(source.ExternalId);
+            other.SourceRecId.Should().Be(source.SourceRecId);
+            other.BinaryCheckSum.Should().Be(source.BinaryCheckSum);
+            other.RotationAngle.Should().Be(source.RotationAngle);
+        }
     }
 
-    [Fact(Skip = "Not Implemented")]
+    [Fact]
     public void ParcelServiceTestThatUtilizesConstructUsing() {
         // Arrange
-        // TODO: Parcel service has a mapping for related parcels that specifies a constructor and ignores all members
+        // TODO: The profile for this is currently commented out as the methods in it are not-yet-implemented
+        var source = _mocker.Create<Parcel>();
 
         // Act
+        var destination = _mapper.Map<RelatedParcelViewModel>(source);
 
         // Assert
-
+        using (new AssertionScope()) {
+            destination.RelatedParcelNumber.Should().Be(source.Number);
+            destination.District.Should().BeNull();
+        }
     }
 }
