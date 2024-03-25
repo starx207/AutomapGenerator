@@ -1,4 +1,6 @@
-﻿namespace AutomapGenerator.Generator.VerificationTests.MemberOverride.Sources;
+﻿using System;
+
+namespace AutomapGenerator.Generator.VerificationTests.MemberOverride.Sources;
 
 public class SimpleDestinationObj : ISourceFile {
     public Guid Id { get; set; }

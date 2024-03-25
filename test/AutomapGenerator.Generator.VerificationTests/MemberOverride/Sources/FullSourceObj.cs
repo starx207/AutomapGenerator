@@ -1,4 +1,5 @@
-﻿namespace AutomapGenerator.Generator.VerificationTests.MemberOverride.Sources;
+﻿using System;
+namespace AutomapGenerator.Generator.VerificationTests.MemberOverride.Sources;
 
 public class FullSourceObj : ISourceFile {
     public Guid Id { get; set; }

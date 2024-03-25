@@ -1,4 +1,6 @@
-﻿namespace AutomapGenerator.Generator.VerificationTests.ParameterizedCtor.Sources;
+﻿using System;
+
+namespace AutomapGenerator.Generator.VerificationTests.ParameterizedCtor.Sources;
 public class SourceObj : ISourceFile {
     public int Id { get; set; }
     public string? Text { get; set; }

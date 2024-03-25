@@ -1,4 +1,6 @@
-﻿namespace AutomapGenerator.Generator.VerificationTests.CreateMap.Sources;
+﻿using System;
+
+namespace AutomapGenerator.Generator.VerificationTests.CreateMap.Sources;
 
 public class DestinationWithSrcPrefix : ISourceFile {
     public Guid FullSourceObjId { get; set; }

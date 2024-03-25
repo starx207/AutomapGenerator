@@ -1,4 +1,6 @@
-﻿namespace AutomapGenerator.Generator.VerificationTests.CreateProjection.Sources;
+﻿using System.Linq;
+
+namespace AutomapGenerator.Generator.VerificationTests.CreateProjection.Sources;
 public class ClassUsingAlternateDestMap : ISourceFile {
     private readonly IMapper _mapper = null!;
 

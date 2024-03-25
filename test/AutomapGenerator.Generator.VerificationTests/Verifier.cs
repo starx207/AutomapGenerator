@@ -3,6 +3,10 @@ using AutomapGenerator.SourceGenerator;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis;
 using XUnitVerifier = VerifyXunit.Verifier;
+using System.Threading.Tasks;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
 
 namespace AutomapGenerator.Generator.VerificationTests;
 internal static class Verifier {

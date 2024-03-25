@@ -1,4 +1,5 @@
-﻿namespace AutomapGenerator.Generator.VerificationTests.RecognizePrefixes.Sources;
+﻿using System;
+namespace AutomapGenerator.Generator.VerificationTests.RecognizePrefixes.Sources;
 public class UnprefixedObject : ISourceFile {
     public Guid Id { get; set; }
     public string? Type { get; set; }

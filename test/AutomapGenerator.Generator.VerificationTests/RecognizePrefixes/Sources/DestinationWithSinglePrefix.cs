@@ -1,4 +1,5 @@
-﻿namespace AutomapGenerator.Generator.VerificationTests.RecognizePrefixes.Sources;
+﻿using System;
+namespace AutomapGenerator.Generator.VerificationTests.RecognizePrefixes.Sources;
 
 public class DestinationWithSinglePrefix : ISourceFile {
     public Guid DtoId { get; set; }

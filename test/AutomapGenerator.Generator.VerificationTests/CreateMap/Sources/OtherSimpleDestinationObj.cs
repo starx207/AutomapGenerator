@@ -1,4 +1,6 @@
-﻿namespace AutomapGenerator.Generator.VerificationTests.CreateMap.Sources;
+﻿using System;
+
+namespace AutomapGenerator.Generator.VerificationTests.CreateMap.Sources;
 
 public class OtherSimpleDestinationObj : ISourceFile {
     public Guid Id { get; set; }

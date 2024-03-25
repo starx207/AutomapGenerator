@@ -1,4 +1,6 @@
-﻿namespace AutomapGenerator.Generator.VerificationTests.NoProfileMapping.Sources;
+﻿using System.Linq;
+
+namespace AutomapGenerator.Generator.VerificationTests.NoProfileMapping.Sources;
 public class ClassThatUsesProjection : ISourceFile {
     private readonly IMapper _mapper;
 

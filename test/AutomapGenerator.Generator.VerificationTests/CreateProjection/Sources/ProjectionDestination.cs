@@ -1,4 +1,5 @@
-﻿namespace AutomapGenerator.Generator.VerificationTests.CreateProjection.Sources;
+﻿using System;
+namespace AutomapGenerator.Generator.VerificationTests.CreateProjection.Sources;
 
 public class ProjectionDestination : ISourceFile {
     public Guid Id { get; set; }

@@ -1,4 +1,7 @@
-﻿namespace AutomapGenerator.Generator.VerificationTests.CreateMap;
+﻿using System.IO;
+using System.Threading.Tasks;
+
+namespace AutomapGenerator.Generator.VerificationTests.CreateMap;
 
 public class MapperGenerator_Verifications {
     private static readonly string _snapshotLocation = Path.Combine("CreateMap", "Snapshots");

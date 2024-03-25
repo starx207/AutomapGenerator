@@ -1,4 +1,5 @@
-﻿namespace AutomapGenerator.Generator.VerificationTests.RecognizePrefixes.Sources;
+﻿using System;
+namespace AutomapGenerator.Generator.VerificationTests.RecognizePrefixes.Sources;
 
 public class SourceWithMultiplePrefixes : ISourceFile {
     public Guid TestPrefixId { get; set; }
