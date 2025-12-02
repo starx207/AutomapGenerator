@@ -16,6 +16,8 @@ internal static class MapGenHelper {
     private static readonly string _generatorVersion = typeof(MapperGenerator).Assembly.GetName().Version.ToString();
 
     public static NamespaceDeclarationSyntax CreateMapperClass(MapDefinition[] sources) {
+        // TODO: I need to rethink my approach here. I'm thinking a better way would be to, at the time of gathering the mappings, for each collection to collection mapping, generate a mapping for the inner types too.
+        //       Then my project and enumerable internal mappings can skip the collection types and only generate methods for the inner types
         var mapExistingMethods = CreateMapExistingMethods(INDENT + INDENT, sources);
         var mapNewMethod = CreateMapNewMethod(mapExistingMethods, sources, INDENT + INDENT);
         var projectMethods = CreateProjectToMethods(INDENT + INDENT, sources);
@@ -159,13 +161,28 @@ internal static class MapGenHelper {
     private static MethodDeclarationSyntax CreateMapNewMethod(List<MethodDeclarationSyntax> mapExistingMethods, MapDefinition[] sources, string indentation) {
         var sourceVarName = "source";
         var switchSections = new List<SwitchSectionSyntax>();
+        var collectionMaps = new Dictionary<(string, string), CollectionMapRequirements>();
         for (var i = 0; i < mapExistingMethods.Count; i++) {
             var method = mapExistingMethods[i];
             if (method.Identifier.Text == MAP_METHOD_NAME) {
                 continue; // This is not one of the internal map methods, so skip it
             }
 
-            switchSections.Add(CreateMapNewSwitchSection(method, sources, sourceVarName, indentation));
+            if (method.Identifier.Text == MAP_INTERNAL_METHOD_NAME) {
+                switchSections.Add(CreateMapNewSwitchSection(method, sources, sourceVarName, indentation));
+            } else {
+                // TODO: Add switch section for mapping to collection
+                var test = method.ParameterList.Parameters[0].Type.ToString();
+                for (var j = 0; j < sources.Length; j++) {
+                    for (var k = 0; k < sources[j].Mappings.Count; k++) {
+                        var mapping = sources[j].Mappings[k];
+                        if (mapping.SourceName == test && mapping.CollectionType != CollectionMapType.None) {
+                            var pause = true;
+                            throw new Exception("This is where I left off. Need to figure out how to generate the collection maps");
+                        }
+                    }
+                }
+            }
         }
 
         var needsStringMap = false;
@@ -389,6 +406,7 @@ internal static class MapGenHelper {
         var internalMapMethods = new List<MethodDeclarationSyntax>();
         var switchSections = new List<SwitchSectionSyntax>();
         var needsStringMap = false;
+        var collectionMaps = new Dictionary<(string, string), CollectionMapRequirements>();
         for (var i = 0; i < srcMappings.Length; i++) {
             var definition = srcMappings[i];
             for (var j = 0; j < definition.Mappings.Count; j++) {
@@ -396,12 +414,62 @@ internal static class MapGenHelper {
                 if (!mapping.ProjectionOnly) {
                     if (mapping.DestinationSymbol.SpecialType == SpecialType.System_String) {
                         needsStringMap = true;
+                    } else if (mapping.CollectionType != CollectionMapType.None) {
+                        var key = (mapping.CollectionMapping.InnerSourceName, mapping.CollectionMapping.InnerDestinationName);
+                        if (!collectionMaps.ContainsKey(key)) {
+                            MapDefinition.Mapping innerMapping = null!;
+                            if (definition.MappingsBySource.TryGetValue(mapping.CollectionMapping.InnerSourceName, out var innerMappings)) {
+                                for (var k = 0; k < innerMappings.Count; k++) {
+                                    if (innerMappings[k].DestinationName == mapping.CollectionMapping.InnerDestinationName) {
+                                        innerMapping = innerMappings[k];
+                                        break;
+                                    }
+                                }
+                            }
+                            if (innerMapping is null) {
+                                throw new Exception("How did we get here?");
+                            }
+
+                            var enumerableMethod = CreateInternalEnumerableMethod(srcMappings, innerMapping.SourceSymbol, indentation);
+                            internalMapMethods.Add(enumerableMethod);
+                            collectionMaps.Add(key, new(enumerableMethod));
+                        }
+                        if (mapping.CollectionType == CollectionMapType.Array) {
+                            collectionMaps[key].ToArray = true;
+                        } else if (mapping.CollectionType == CollectionMapType.Set) {
+                            collectionMaps[key].ToHash = true;
+                        } else if (mapping.CollectionType == CollectionMapType.Enumerable) {
+                            collectionMaps[key].ToList = true;
+                        }
                     } else {
                         var mapMethod = CreateInternalMapMethod(definition, mapping, indentation);
                         internalMapMethods.Add(mapMethod);
                         switchSections.Add(CreateMapMethodSwitchSection(mapMethod, indentation + INDENT + INDENT));
                     }
                 }
+            }
+        }
+
+        foreach (var item in collectionMaps) {
+            var (sourceName, destinationName) = item.Key;
+            var requirement = item.Value;
+
+            var srcMatchVarName = "s";
+            var methodInvocationSyntax = InvocationExpression(
+                GenericName(Identifier(requirement.EnumerableMethod.Identifier.Text))
+                    .WithTypeArgumentList(TypeArgumentList(SingletonSeparatedList<TypeSyntax>(
+                        IdentifierName(destinationName)))))
+                .WithArgumentList(ArgumentList(SingletonSeparatedList(
+                    Argument(IdentifierName(srcMatchVarName)))));
+
+            if (requirement.ToArray) {
+                switchSections.Add(CreateMapEnumerableSwitchSection(methodInvocationSyntax, sourceName, destinationName, srcMatchVarName, CollectionMapType.Array, indentation + INDENT + INDENT));
+            }
+            if (requirement.ToHash) {
+                switchSections.Add(CreateMapEnumerableSwitchSection(methodInvocationSyntax, sourceName, destinationName, srcMatchVarName, CollectionMapType.Set, indentation + INDENT + INDENT));
+            }
+            if (requirement.ToList) {
+                switchSections.Add(CreateMapEnumerableSwitchSection(methodInvocationSyntax, sourceName, destinationName, srcMatchVarName, CollectionMapType.Enumerable, indentation + INDENT + INDENT));
             }
         }
 
@@ -454,6 +522,150 @@ internal static class MapGenHelper {
         return internalMapMethods;
     }
 
+    private static SwitchSectionSyntax CreateMapEnumerableSwitchSection(InvocationExpressionSyntax mapEnumerableInvocation, string sourceName, string destinationName, string srcMatchVarName, CollectionMapType collectionType, string indentation) {
+        var sourceEnumerableName = WrapInIEnumerable(sourceName);
+        TypeSyntax destEnumerableName = collectionType switch {
+            CollectionMapType.Array => ArrayDeclaration(destinationName),
+            CollectionMapType.Set => WrapInISet(destinationName),
+            _ => WrapInIEnumerable(destinationName)
+        };
+
+        var toMethod = collectionType switch {
+            CollectionMapType.Array => "ToArray",
+            CollectionMapType.Set => "ToHashSet",
+            _ => "ToList"
+        };
+
+        var casterMethodInvocation = InvocationExpression(
+            AliasQualifiedName(
+                IdentifierName(Token(SyntaxKind.GlobalKeyword)),
+                IdentifierName($"System.Linq.Enumerable.{toMethod}")));
+
+        return SwitchSection()
+            .WithLabels(SingletonList<SwitchLabelSyntax>(
+                CasePatternSwitchLabel(
+                    RecursivePattern()
+                    .WithPositionalPatternClause(
+                        PositionalPatternClause(SeparatedList<SubpatternSyntax>(new SyntaxNodeOrToken[] {
+                            Subpattern(
+                                DeclarationPattern(
+                                    sourceEnumerableName,
+                                    SingleVariableDesignation(Identifier(
+                                        TriviaList(Space),
+                                        srcMatchVarName,
+                                        TriviaList())))),
+                            Token(
+                                TriviaList(),
+                                SyntaxKind.CommaToken,
+                                TriviaList(Space)),
+                            Subpattern(
+                                TypePattern(destEnumerableName))
+                        })))
+                    .WithLeadingTrivia(Space),
+                    Token(SyntaxKind.ColonToken))))
+            .WithStatements(SingletonList<StatementSyntax>(
+                ReturnStatement(
+                    CastExpression(
+                        IdentifierName("dynamic"),
+                        casterMethodInvocation
+                        .WithArgumentList(ArgumentList(SingletonSeparatedList(
+                            Argument(mapEnumerableInvocation)))))
+                    .WithLeadingTrivia(Space))
+                .WithLeadingTrivia(CarriageReturnLineFeed, Whitespace(indentation + INDENT))
+                .WithTrailingTrivia(CarriageReturnLineFeed)))
+            .WithLeadingTrivia(Whitespace(indentation));
+    }
+
+    private static SwitchSectionSyntax CreateMapNewEnumerableSwitchSection(InvocationExpressionSyntax mapEnumerableInvocation, string sourceName, string destinationName, string srcMatchVarName, CollectionMapType collectionType, string indentation) {
+        var typeMatchVarName = "t";
+        var sourceEnumerableName = WrapInIEnumerable(sourceName);
+        TypeSyntax destEnumerableName = collectionType switch {
+            CollectionMapType.Array => ArrayDeclaration(destinationName),
+            CollectionMapType.Set => WrapInISet(destinationName),
+            _ => WrapInIEnumerable(destinationName)
+        };
+
+        var toMethod = collectionType switch {
+            CollectionMapType.Array => "ToArray",
+            CollectionMapType.Set => "ToHashSet",
+            _ => "ToList"
+        };
+
+        var casterMethodInvocation = InvocationExpression(
+            AliasQualifiedName(
+                IdentifierName(Token(SyntaxKind.GlobalKeyword)),
+                IdentifierName($"System.Linq.Enumerable.{toMethod}")));
+
+        return SwitchSection()
+            .WithLabels(SingletonList<SwitchLabelSyntax>(
+                CasePatternSwitchLabel(
+                    RecursivePattern()
+                    .WithPositionalPatternClause(
+                        PositionalPatternClause(SeparatedList<SubpatternSyntax>(new SyntaxNodeOrToken[] {
+                            Subpattern(
+                                DeclarationPattern(
+                                    sourceEnumerableName,
+                                    SingleVariableDesignation(Identifier(
+                                        TriviaList(Space),
+                                        srcMatchVarName,
+                                        TriviaList())))),
+                            Token(
+                                TriviaList(),
+                                SyntaxKind.CommaToken,
+                                TriviaList(Space)),
+                            Subpattern(
+                                DeclarationPattern(
+                                    ParseTypeName("System.Type"),
+                                    SingleVariableDesignation(Identifier(
+                                        TriviaList(Space),
+                                        typeMatchVarName,
+                                        TriviaList()))))
+                        })))
+                    .WithLeadingTrivia(Space),
+                    Token(SyntaxKind.ColonToken))
+                .WithWhenClause(
+                    WhenClause(
+                        BinaryExpression(
+                            SyntaxKind.EqualsExpression,
+                            IdentifierName(Identifier(
+                                TriviaList(Space),
+                                typeMatchVarName,
+                                TriviaList())),
+                            TypeOfExpression(destEnumerableName)
+                                .WithLeadingTrivia(Space))))))
+            .WithStatements(SingletonList<StatementSyntax>(
+                ReturnStatement(
+                    CastExpression(
+                        IdentifierName("dynamic"),
+                        casterMethodInvocation
+                        .WithArgumentList(ArgumentList(SingletonSeparatedList(
+                            Argument(mapEnumerableInvocation)))))
+                    .WithLeadingTrivia(Space))
+                .WithLeadingTrivia(CarriageReturnLineFeed, Whitespace(indentation + INDENT))
+                .WithTrailingTrivia(CarriageReturnLineFeed)))
+            .WithLeadingTrivia(Whitespace(indentation));
+    }
+
+    private static ArrayTypeSyntax ArrayDeclaration(string innerTypeName)
+        => ArrayType(IdentifierName(innerTypeName))
+        .WithRankSpecifiers(SingletonList(
+            ArrayRankSpecifier(SingletonSeparatedList<ExpressionSyntax>(
+                OmittedArraySizeExpression()))));
+
+    private static AliasQualifiedNameSyntax WrapInIEnumerable(string innerTypeName)
+        => AliasQualifiedName(
+        IdentifierName(Token(SyntaxKind.GlobalKeyword)),
+        GenericName(TypeNameWithoutArity(typeof(IEnumerable<>), fullName: true))
+        .WithTypeArgumentList(TypeArgumentList(SingletonSeparatedList<TypeSyntax>(
+            IdentifierName(innerTypeName)))));
+
+    private static AliasQualifiedNameSyntax WrapInISet(string innerTypeName)
+        => AliasQualifiedName(
+        IdentifierName(Token(SyntaxKind.GlobalKeyword)),
+        GenericName(TypeNameWithoutArity(typeof(ISet<>), fullName: true))
+        .WithTypeArgumentList(TypeArgumentList(SingletonSeparatedList<TypeSyntax>(
+            IdentifierName(innerTypeName)))));
+
     private static List<MethodDeclarationSyntax> CreateProjectToMethods(string indentation, MapDefinition[] srcMappings) {
         var sourceVarName = "source";
 
@@ -470,8 +682,9 @@ internal static class MapGenHelper {
                     continue;
                 }
                 projectedSources.Add(source);
+                var symbol = definition.MappingsBySource[source][0].SourceSymbol;
 
-                var projectMethod = CreateInternalProjectMethod(srcMappings, source, indentation);
+                var projectMethod = CreateInternalProjectMethod(srcMappings, symbol, indentation);
                 internalProjectMethods.Add(projectMethod);
                 switchSections.Add(CreateProjectToMethodSwitchSection(projectMethod, indentation + INDENT + INDENT));
             }
@@ -675,7 +888,7 @@ internal static class MapGenHelper {
             ));
     }
 
-    private static InvocationExpressionSyntax CreateLinqSelectExpression(string sourceVarName, string lambdaVarName, SimpleLambdaExpressionSyntax linqSelectLambdaExpression)
+    private static InvocationExpressionSyntax CreateLinqSelectExpression(string sourceVarName, SimpleLambdaExpressionSyntax linqSelectLambdaExpression, Type linqType)
         => InvocationExpression(
             MemberAccessExpression(
                 SyntaxKind.SimpleMemberAccessExpression,
@@ -683,9 +896,9 @@ internal static class MapGenHelper {
                     SyntaxKind.SimpleMemberAccessExpression,
                     AliasQualifiedName(
                         IdentifierName(Token(SyntaxKind.GlobalKeyword)),
-                        IdentifierName(typeof(Queryable).Namespace)),
-                    IdentifierName(nameof(Queryable))),
-                IdentifierName(Identifier(nameof(Queryable.Select)))))
+                        IdentifierName(linqType.Namespace)),
+                    IdentifierName(linqType.Name)),
+                IdentifierName(Identifier("Select"))))
         .WithArgumentList(ArgumentList(SeparatedList<ArgumentSyntax>(new SyntaxNodeOrToken[] {
             Argument(IdentifierName(sourceVarName)),
             Token(
@@ -695,9 +908,17 @@ internal static class MapGenHelper {
             Argument(linqSelectLambdaExpression)
         })));
 
-    private static MethodDeclarationSyntax CreateInternalProjectMethod(MapDefinition[] definitions, string sourceName, string indentation) {
-        var patternMatchSrcName = WrapTypeInIQueryable(ParseTypeName(sourceName));
-        var matchedSrcVarName = "sourceQueryable";
+    private static MethodDeclarationSyntax CreateInternalProjectMethod(MapDefinition[] definitions, ITypeSymbol sourceSymbol, string indentation) 
+        => CreateInternalLinqMethod(definitions, sourceSymbol, indentation, methodName: "ProjectInternal", isQueryable: true);
+
+    private static MethodDeclarationSyntax CreateInternalEnumerableMethod(MapDefinition[] definitions, ITypeSymbol sourceSymbol, string indentation)
+        => CreateInternalLinqMethod(definitions, sourceSymbol, indentation, methodName: "EnumerableInternal", isQueryable: false);
+
+    private static MethodDeclarationSyntax CreateInternalLinqMethod(MapDefinition[] definitions, ITypeSymbol sourceSymbol, string indentation, string methodName, bool isQueryable) {
+        var linqType = isQueryable ? typeof(Queryable) : typeof(Enumerable);
+        var sourceName = sourceSymbol.ToDisplayString();
+        var patternMatchSrcName = WrapTypeInLinqAbstraction(ParseTypeName(sourceName), isQueryable);
+        var matchedSrcVarName = isQueryable ? "sourceQueryable" : "sourceEnumerable";
         var lambdaVarName = "source";
         var typeMatchVarName = "t";
 
@@ -713,7 +934,7 @@ internal static class MapGenHelper {
                 StatementSyntax switchStatement;
                 if (TryCreateProjectToString(mapping, lambdaVarName, out var selectLambda)
                     || TryCreateProjectionObjectInitializer(definition, mapping, lambdaVarName, indentation + INDENT + INDENT + INDENT, out selectLambda)) {
-                    var linqSelect = CreateLinqSelectExpression(matchedSrcVarName, lambdaVarName, selectLambda);
+                    var linqSelect = CreateLinqSelectExpression(matchedSrcVarName, selectLambda, linqType);
 
                     var linqCast = InvocationExpression(
                             MemberAccessExpression(
@@ -722,9 +943,9 @@ internal static class MapGenHelper {
                                     SyntaxKind.SimpleMemberAccessExpression,
                                     AliasQualifiedName(
                                         IdentifierName(Token(SyntaxKind.GlobalKeyword)),
-                                        IdentifierName(typeof(Queryable).Namespace)),
-                                    IdentifierName(nameof(Queryable))),
-                                GenericName(Identifier(nameof(Queryable.Cast)))
+                                        IdentifierName(linqType.Namespace)),
+                                    IdentifierName(linqType.Name)),
+                                GenericName(Identifier("Cast"))
                                 .WithTypeArgumentList(TypeArgumentList(
                                     SingletonSeparatedList<TypeSyntax>(
                                         IdentifierName(GENERIC_TYPE_NAME_DESTINATION))))))
@@ -738,44 +959,17 @@ internal static class MapGenHelper {
                     switchStatement = CreateConstructorMapException(matchedSrcVarName);
                 }
 
-                var switchSection = SwitchSection()
-                    .WithLabels(SingletonList<SwitchLabelSyntax>(
-                        CasePatternSwitchLabel(
-                            DeclarationPattern(
-                                ParseTypeName("System.Type").WithLeadingTrivia(Space),
-                                SingleVariableDesignation(Identifier(
-                                    TriviaList(Space),
-                                    typeMatchVarName,
-                                    TriviaList(Space)))),
-                            Token(
-                                TriviaList(),
-                                SyntaxKind.ColonToken,
-                                TriviaList(CarriageReturnLineFeed)))
-                        .WithLeadingTrivia(Whitespace(indentation + INDENT + INDENT))
-                        .WithWhenClause(WhenClause(
-                            BinaryExpression(
-                                SyntaxKind.EqualsExpression,
-                                IdentifierName(Identifier(
-                                    TriviaList(Space),
-                                    typeMatchVarName,
-                                    TriviaList(Space))),
-                                TypeOfExpression(patternMatchDestName).WithLeadingTrivia(Space))))))
-                    .WithStatements(SingletonList(
-                        switchStatement
-                        .WithLeadingTrivia(Whitespace(indentation + INDENT + INDENT + INDENT))
-                        .WithTrailingTrivia(CarriageReturnLineFeed)));
-
-                switchSections.Add(switchSection);
+                switchSections.Add(CreateTypeMatchSwitchSection(switchStatement, patternMatchDestName, typeMatchVarName, indentation + INDENT + INDENT));
             }
         }
 
         switchSections.Add(CreateDefaultSwitchThrow(matchedSrcVarName, true, indentation + INDENT + INDENT));
 
         return MethodDeclaration(
-            WrapTypeInIQueryable(IdentifierName(GENERIC_TYPE_NAME_DESTINATION)),
+            WrapTypeInLinqAbstraction(IdentifierName(GENERIC_TYPE_NAME_DESTINATION), isQueryable),
             Identifier(
                 TriviaList(Space),
-                "ProjectInternal",
+                methodName,
                 TriviaList())
         ).WithModifiers(TokenList(
             Token(
@@ -813,6 +1007,34 @@ internal static class MapGenHelper {
                 SyntaxKind.CloseBraceToken,
                 TriviaList())));
     }
+
+    private static SwitchSectionSyntax CreateTypeMatchSwitchSection(StatementSyntax switchContent, TypeSyntax patternMatchDestType, string typeMatchVarName, string indentation)
+        => SwitchSection()
+        .WithLabels(SingletonList<SwitchLabelSyntax>(
+            CasePatternSwitchLabel(
+                DeclarationPattern(
+                    ParseTypeName("System.Type").WithLeadingTrivia(Space),
+                    SingleVariableDesignation(Identifier(
+                        TriviaList(Space),
+                        typeMatchVarName,
+                        TriviaList(Space)))),
+                Token(
+                    TriviaList(),
+                    SyntaxKind.ColonToken,
+                    TriviaList(CarriageReturnLineFeed)))
+            .WithLeadingTrivia(Whitespace(indentation))
+            .WithWhenClause(WhenClause(
+                BinaryExpression(
+                    SyntaxKind.EqualsExpression,
+                    IdentifierName(Identifier(
+                        TriviaList(Space),
+                        typeMatchVarName,
+                        TriviaList(Space))),
+                    TypeOfExpression(patternMatchDestType).WithLeadingTrivia(Space))))))
+        .WithStatements(SingletonList(
+            switchContent
+            .WithLeadingTrivia(Whitespace(indentation + INDENT))
+            .WithTrailingTrivia(CarriageReturnLineFeed)));
 
     private static bool TryCreateProjectToString(MapDefinition.Mapping mapping, string lambdaVarName, [NotNullWhen(true)] out SimpleLambdaExpressionSyntax? toStringExpression) {
         if (mapping.DestinationSymbol.SpecialType != SpecialType.System_String) {
@@ -934,14 +1156,22 @@ internal static class MapGenHelper {
         return false;
     }
 
-    private static TypeSyntax WrapTypeInIQueryable(TypeSyntax innerType)
-        => QualifiedName(
+    private static string TypeNameWithoutArity(Type t, bool fullName = false) {
+        var name = fullName ? t.FullName : t.Name;
+        var idx = name.IndexOf('`');
+        return idx >= 0 ? name[..idx] : name;
+    }
+
+    private static TypeSyntax WrapTypeInLinqAbstraction(TypeSyntax innerType, bool isQueryable) {
+        var linqType = isQueryable ? typeof(IQueryable<>) : typeof(IEnumerable<>);
+        return QualifiedName(
             AliasQualifiedName(
                 IdentifierName(Token(SyntaxKind.GlobalKeyword)),
-                IdentifierName(typeof(IQueryable).Namespace)),
-            GenericName(nameof(IQueryable))
+                IdentifierName(linqType.Namespace)),
+            GenericName(TypeNameWithoutArity(linqType))
                 .WithTypeArgumentList(TypeArgumentList(
                     SingletonSeparatedList(innerType))));
+    }
 
     private static SwitchSectionSyntax CreateProjectToMethodSwitchSection(MethodDeclarationSyntax projectMethod, string indentation) {
         var sourceType = projectMethod.ParameterList.Parameters[0].Type!;
@@ -1135,5 +1365,13 @@ internal static class MapGenHelper {
         var attrName = typeof(TAttribute).FullName;
         var attrSuffix = "Attribute";
         return IdentifierName(attrName.Substring(0, attrName.Length - attrSuffix.Length));
+    }
+
+    private class CollectionMapRequirements {
+        public CollectionMapRequirements(MethodDeclarationSyntax enumerableMethod) => EnumerableMethod = enumerableMethod;
+        public bool ToArray { get; set; }
+        public bool ToHash { get; set; }
+        public bool ToList { get; set; }
+        public MethodDeclarationSyntax EnumerableMethod { get; }
     }
 }

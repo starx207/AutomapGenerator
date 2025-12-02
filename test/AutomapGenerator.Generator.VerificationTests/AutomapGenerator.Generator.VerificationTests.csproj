@@ -8,7 +8,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Using Include="Xunit"/>
+    <Using Include="Xunit" />
   </ItemGroup>
 
   <ItemGroup>
@@ -34,6 +34,10 @@
   <ItemGroup>
     <ProjectReference Include="..\..\src\AutomapGenerator.SourceGenerator\AutomapGenerator.SourceGenerator.csproj" />
     <ProjectReference Include="..\..\src\AutomapGenerator\AutomapGenerator.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Remove="ParameterizedCtor\Snapshots\ObjectWithMultipleConstructors#Mapper.g.verified.cs" />
   </ItemGroup>
 
 </Project>

@@ -14,5 +14,19 @@ public class MapperGenerator_Verifications {
        SourceReader.GetSourceFor<Sources.ProfileForIncompatibleCtor>()
     }, _snapshotLocation);
 
+    [Fact]
+    public Task ObjectWithCompatibleConstructor() => Verifier.Verify(new[] {
+       SourceReader.GetSourceFor<Sources.SourceObj>(),
+       SourceReader.GetSourceFor(new Sources.DestWithCompatibleCtor(string.Empty)),
+       SourceReader.GetSourceFor<Sources.ProfileForCompatibleCtor>()
+    }, _snapshotLocation);
+
+    [Fact]
+    public Task ObjectWithMultipleConstructors() => Verifier.Verify(new[] {
+       SourceReader.GetSourceFor<Sources.SourceObj>(),
+       SourceReader.GetSourceFor<Sources.DestWithMultipleCtor>(),
+       SourceReader.GetSourceFor<Sources.ProfileForMultipleCtor>()
+    }, _snapshotLocation);
+
     #endregion
 }

@@ -109,14 +109,50 @@ internal static class MapDefinitionHelper {
 
 
                     // Once we have the source type and destination type, we can create a map definition
-                    definition.AddMapping(new(
-                        srcSymbol,
-                        GetAllPropertySymbols(srcSymbol),
-                        destSymbol,
-                        GetAllPropertySymbols(destSymbol, writableOnly: true),
-                        GetAllPublicConstructors(destSymbol),
-                        projection,
-                        new()));
+                    // If the source and destination are both IEnumerable, we need to add the mappings for their generic type too
+                    if ((!projection) && TryGetEnumerableTypeSymbol(srcSymbol, out var srcEnumerable) && TryGetEnumerableTypeSymbol(destSymbol, out var destEnumerable)) {
+                        // Create the outer mapping
+                        var mapType = CollectionMapType.Enumerable;
+                        if (destSymbol.TypeKind == TypeKind.Array) {
+                            mapType = CollectionMapType.Array;
+                        } else if (TryGetSetTypeSymbol(destSymbol, out _)) {
+                            mapType = CollectionMapType.Set;
+                        }
+
+                        var innerSource = srcEnumerable.TypeArguments[0];
+                        var innerDest = destEnumerable.TypeArguments[0];
+
+                        definition.AddMapping(new(
+                            srcSymbol,
+                            GetAllPropertySymbols(srcSymbol),
+                            destSymbol,
+                            GetAllPropertySymbols(destSymbol, writableOnly: true),
+                            GetAllPublicConstructors(destSymbol),
+                            projection,
+                            new(),
+                            new(mapType, innerSource.ToDisplayString(), innerDest.ToDisplayString())));
+
+                        // Create the inner mapping
+                        definition.AddMapping(new(
+                            innerSource,
+                            GetAllPropertySymbols(innerSource),
+                            innerDest,
+                            GetAllPropertySymbols(innerDest, writableOnly: true),
+                            GetAllPublicConstructors(innerDest),
+                            false,
+                            new(),
+                            MapDefinition.CollectionMapping.NoCollection));
+                    } else {
+                        definition.AddMapping(new(
+                            srcSymbol,
+                            GetAllPropertySymbols(srcSymbol),
+                            destSymbol,
+                            GetAllPropertySymbols(destSymbol, writableOnly: true),
+                            GetAllPublicConstructors(destSymbol),
+                            projection,
+                            new(),
+                            MapDefinition.CollectionMapping.NoCollection));
+                    }
                 } else {
                     if (TryExtractCreateMapOrProjectionInvocation(invocation, compilation, token, out var mapOrProjection)) {
                         definition.AddMapping(ConvertToMapping(mapOrProjection, token));
@@ -223,7 +259,8 @@ internal static class MapDefinitionHelper {
             GetAllPropertySymbols(destinationSymbol, writableOnly: true),
             GetAllPublicConstructors(destinationSymbol),
             projectionOnly,
-            GetCustomMappings(invocation.Origin));
+            GetCustomMappings(invocation.Origin),
+            MapDefinition.CollectionMapping.NoCollection);
     }
 
     private static Dictionary<string, MappingCustomization> GetCustomMappings(InvocationExpressionSyntax node) {
@@ -314,6 +351,8 @@ internal static class MapDefinitionHelper {
 
     private static ImmutableArray<IMethodSymbol> GetAllPublicConstructors(ITypeSymbol? sourceSymbol) {
         var sourceCtors = new List<IMethodSymbol>();
+        // var sourceCtorsWithParamCount = new Dictionary<int, List<IMethodSymbol>>();
+        // var maxCtorParamCount = 0;
         if (sourceSymbol is not null) {
             var sourceMembers = sourceSymbol.GetMembers();
             for (var i = 0; i < sourceMembers.Length; i++) {
@@ -321,7 +360,24 @@ internal static class MapDefinitionHelper {
                 if (srcMember is IMethodSymbol { MethodKind: MethodKind.Constructor, DeclaredAccessibility: Accessibility.Public } ctorMethod) {
                     sourceCtors.Add(ctorMethod);
                 }
+                // if (srcMember is IMethodSymbol { MethodKind: MethodKind.Constructor, DeclaredAccessibility: Accessibility.Public } ctorMethod) {
+                //     var paramCount = ctorMethod.Parameters.Length;
+                //     if (!sourceCtorsWithParamCount.ContainsKey(paramCount)) {
+                //         sourceCtorsWithParamCount[paramCount] = new();
+                //     }
+                //     sourceCtorsWithParamCount[paramCount].Add(ctorMethod);
+                //     if (maxCtorParamCount < paramCount) {
+                //         maxCtorParamCount = paramCount;
+                //     }
+                // }
             }
+
+            // // Now order by highest param count
+            // for (var i = maxCtorParamCount; i >= 0; i--) {
+            //     if (sourceCtorsWithParamCount.TryGetValue(i, out var ctors)) {
+            //         sourceCtors.AddRange(ctors);
+            //     }
+            // }
         }
         return ImmutableArray.CreateRange(sourceCtors);
     }
@@ -343,6 +399,27 @@ internal static class MapDefinitionHelper {
             }
         }
         genericName = null;
+        return false;
+    }
+
+    private static bool TryGetEnumerableTypeSymbol(ITypeSymbol typeSymbol, [NotNullWhen(true)] out INamedTypeSymbol? symbol) => TryGetGenericEnumerableTypeSymbol(typeSymbol, "IEnumerable", out symbol);
+
+    private static bool TryGetSetTypeSymbol(ITypeSymbol typeSymbol, [NotNullWhen(true)] out INamedTypeSymbol? symbol) => TryGetGenericEnumerableTypeSymbol(typeSymbol, "ISet", out symbol);
+
+    private static bool TryGetGenericEnumerableTypeSymbol(ITypeSymbol typeSymbol, string typeName, [NotNullWhen(true)] out INamedTypeSymbol? symbol) {
+        if (typeSymbol is INamedTypeSymbol { Arity: 1 } namedSymbol && namedSymbol.Name == typeName && namedSymbol.ContainingNamespace.ToDisplayString() == "System.Collections.Generic") {
+            symbol = namedSymbol;
+            return true;
+        }
+
+        var interfaces = typeSymbol.AllInterfaces;
+        for (var i = 0; i < interfaces.Length; i++) {
+            if (interfaces[i] is { Arity: 1 } @interface && @interface.Name == typeName && @interface.ContainingNamespace.ToDisplayString() == "System.Collections.Generic") {
+                symbol = @interface;
+                return true;
+            }
+        }
+        symbol = null;
         return false;
     }
 

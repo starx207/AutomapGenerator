@@ -6,42 +6,95 @@ namespace AutomapGenerator
     public class Mapper : IMapper
     {
         public TDestination Map<TDestination>(object source)
-            where TDestination : new() => Map<TDestination>(source, new TDestination());
+        {
+            switch (source, typeof(TDestination))
+            {
+                case (SampleMappingConsumer.Models.SourceObj s, System.Type t) when t == typeof(SampleMappingConsumer.Models.DestinationObj):
+                    return (dynamic)MapInternal(s, new SampleMappingConsumer.Models.DestinationObj());
+                case (SampleMappingConsumer.Models.DestinationObj s, System.Type t) when t == typeof(SampleMappingConsumer.Models.SourceObj):
+                    return (dynamic)MapInternal(s, new SampleMappingConsumer.Models.SourceObj());
+                default:
+                    throw new MappingException($"Mapping from {source.GetType().Name} to new {typeof(TDestination).Name} has not been configured.");
+            }
+        }
+
         public TDestination Map<TDestination>(object source, TDestination destination)
         {
             switch (source, destination)
             {
-                case (SampleMappingConsumer.Models.SourceObj s, SampleMappingConsumer.Models.DestinationObj d):
-                    d.Id = s.Id;
-                    d.Type = s.Type;
-                    d.Timestamp = s.Timestamp;
-                    d.InUse = s.InUse;
-                    break;
-                case (SampleMappingConsumer.Models.DestinationObj s, SampleMappingConsumer.Models.SourceObj d):
-                    d.Id = s.Id;
-                    d.Type = s.Type;
-                    d.Timestamp = s.Timestamp;
-                    d.InUse = s.InUse;
-                    break;
+                case (SampleMappingConsumer.Models.SourceObj s, SampleMappingConsumer.Models.DestinationObj d):                    return (dynamic)MapInternal(s, d);
+                case (SampleMappingConsumer.Models.DestinationObj s, SampleMappingConsumer.Models.SourceObj d):                    return (dynamic)MapInternal(s, d);
                 default:
-                    throw new MappingException($"Mapping from {source.GetType().Name} to {typeof(TDestination).Name} has not been configured.");
+                    throw new MappingException($"Mapping from {source.GetType().Name} to existing {typeof(TDestination).Name} has not been configured.");
             }
+        }
+
+        private SampleMappingConsumer.Models.DestinationObj MapInternal(SampleMappingConsumer.Models.SourceObj source, SampleMappingConsumer.Models.DestinationObj destination)
+        {
+            destination.Id = source.Id;
+            destination.Type = source.Type;
+            destination.Timestamp = source.Timestamp;
+            destination.InUse = source.InUse;
+
+            return destination;
+        }
+
+        private SampleMappingConsumer.Models.SourceObj MapInternal(SampleMappingConsumer.Models.DestinationObj source, SampleMappingConsumer.Models.SourceObj destination)
+        {
+            destination.Id = source.Id;
+            destination.Type = source.Type;
+            destination.Timestamp = source.Timestamp;
+            destination.InUse = source.InUse;
 
             return destination;
         }
 
         public global::System.Linq.IQueryable<TDestination> ProjectTo<TDestination>(global::System.Linq.IQueryable<object> source)
-            where TDestination : new()
         {
-            var destInstance = new TDestination();
-            switch (source, destInstance)
+            switch (source)
             {
-                case (global::System.Linq.IQueryable<SampleMappingConsumer.Models.SourceObj> s, SampleMappingConsumer.Models.DestinationObj):
-                    return global::System.Linq.Queryable.Cast<TDestination>(global::System.Linq.Queryable.Select(s, src => new SampleMappingConsumer.Models.DestinationObj() { Id = src.Id, Type = src.Type, Timestamp = src.Timestamp, InUse = src.InUse }));
-                case (global::System.Linq.IQueryable<SampleMappingConsumer.Models.DestinationObj> s, SampleMappingConsumer.Models.SourceObj):
-                    return global::System.Linq.Queryable.Cast<TDestination>(global::System.Linq.Queryable.Select(s, src => new SampleMappingConsumer.Models.SourceObj() { Id = src.Id, Type = src.Type, Timestamp = src.Timestamp, InUse = src.InUse }));
+                case global::System.Linq.IQueryable<SampleMappingConsumer.Models.SourceObj> s:
+                    return ProjectInternal<TDestination>(s);
+                case global::System.Linq.IQueryable<SampleMappingConsumer.Models.DestinationObj> s:
+                    return ProjectInternal<TDestination>(s);
                 default:
-                    throw new MappingException($"Mapping from {source.GetType().Name} to {typeof(TDestination).Name} has not been configured.");
+                    throw new MappingException($"Mapping from {source.GetType().Name} to new {typeof(TDestination).Name} has not been configured.");
+            }
+        }
+
+        private global::System.Linq.IQueryable<TDestination> ProjectInternal<TDestination>(global::System.Linq.IQueryable<SampleMappingConsumer.Models.SourceObj> sourceQueryable)
+        {
+            switch (typeof(TDestination))
+            {
+                case System.Type t when t == typeof(SampleMappingConsumer.Models.DestinationObj):
+                    return global::System.Linq.Queryable.Cast<TDestination>(
+                        global::System.Linq.Queryable.Select(sourceQueryable, source => new SampleMappingConsumer.Models.DestinationObj()
+                        {
+                            Id = source.Id,
+                            Type = source.Type,
+                            Timestamp = source.Timestamp,
+                            InUse = source.InUse
+                        }));
+                default:
+                    throw new MappingException($"Mapping from {sourceQueryable.GetType().Name} to new {typeof(TDestination).Name} has not been configured.");
+            }
+        }
+
+        private global::System.Linq.IQueryable<TDestination> ProjectInternal<TDestination>(global::System.Linq.IQueryable<SampleMappingConsumer.Models.DestinationObj> sourceQueryable)
+        {
+            switch (typeof(TDestination))
+            {
+                case System.Type t when t == typeof(SampleMappingConsumer.Models.SourceObj):
+                    return global::System.Linq.Queryable.Cast<TDestination>(
+                        global::System.Linq.Queryable.Select(sourceQueryable, source => new SampleMappingConsumer.Models.SourceObj()
+                        {
+                            Id = source.Id,
+                            Type = source.Type,
+                            Timestamp = source.Timestamp,
+                            InUse = source.InUse
+                        }));
+                default:
+                    throw new MappingException($"Mapping from {sourceQueryable.GetType().Name} to new {typeof(TDestination).Name} has not been configured.");
             }
         }
     }

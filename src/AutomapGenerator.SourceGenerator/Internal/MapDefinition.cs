@@ -27,6 +27,10 @@ internal class MapDefinition {
 
     public void AddMapping(Mapping mapping) {
         _allMappings.Add(mapping);
+        if (mapping.CollectionType != CollectionMapType.None) {
+            return; // Don't need collection types in the source dictionary
+        }
+
         if (!_mappingsBySource.ContainsKey(mapping.SourceName)) {
             _mappingsBySource[mapping.SourceName] = new();
         }
@@ -89,10 +93,11 @@ internal class MapDefinition {
     public record Mapping(ITypeSymbol SourceSymbol, ImmutableArray<IPropertySymbol> SourceProperties,
         ITypeSymbol DestinationSymbol, ImmutableArray<IPropertySymbol> WritableDestinationProperties, 
         ImmutableArray<IMethodSymbol> DestinationConstructors,
-        bool ProjectionOnly, Dictionary<string, MappingCustomization> CustomMappings) {
+        bool ProjectionOnly, Dictionary<string, MappingCustomization> CustomMappings, CollectionMapping CollectionMapping) {
 
         public string SourceName { get; } = SourceSymbol.ToDisplayString();
         public string DestinationName { get; } = DestinationSymbol.ToDisplayString();
+        public CollectionMapType CollectionType => CollectionMapping.CollectionType;
 
         public bool TryGetExplicitMapping(ref List<(string, string)> mappings, string destPropName, string sourceVarName) {
             if (CustomMappings.TryGetValue(destPropName, out var customMapping) && customMapping.LambdaMapping is { } explicitLambdaExpr) {
@@ -228,5 +233,9 @@ internal class MapDefinition {
             output.Add(new string(currentWord, 0, j));
             return output.ToArray();
         }
+    }
+
+    public record CollectionMapping(CollectionMapType CollectionType, string InnerSourceName, string InnerDestinationName) {
+        public static CollectionMapping NoCollection = new(CollectionMapType.None, "", "");
     }
 }
